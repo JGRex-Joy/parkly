@@ -1,0 +1,1 @@
+sequence diagram, pinouts, serial specs
