@@ -1,0 +1,66 @@
+from __future__ import annotations
+
+from typing import Callable
+
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+from fastapi.concurrency import run_in_threadpool
+
+from app.core.config import Settings
+from app.db.database import Database
+from app.api.dependencies import get_connection_manager, get_database, get_settings
+from app.repositories import Repositories
+from app.services.display import DisplayPayloadBuilder
+from app.websocket_manager import ConnectionManager
+
+router = APIRouter(tags=["WebSocket дисплеи"])
+
+
+def _snapshot(
+    database: Database, settings: Settings, build: Callable[[DisplayPayloadBuilder], dict]
+) -> dict:
+    # Short-lived session: never keep a transaction open for the socket's lifetime.
+    with database.session() as db:
+        return build(DisplayPayloadBuilder(Repositories.for_session(db), settings.base_url))
+
+
+async def _serve(
+    channel: str,
+    websocket: WebSocket,
+    manager: ConnectionManager,
+    initial: Callable[[], dict],
+) -> None:
+    await manager.connect(channel, websocket)
+    try:
+        await websocket.send_json(await run_in_threadpool(initial))
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        manager.disconnect(channel, websocket)
+
+
+@router.websocket("/ws/entry-display")
+async def ws_entry_display(
+    websocket: WebSocket,
+    manager: ConnectionManager = Depends(get_connection_manager),
+    database: Database = Depends(get_database),
+    settings: Settings = Depends(get_settings),
+):
+    await _serve(
+        "entry", websocket, manager,
+        lambda: _snapshot(database, settings, lambda b: b.entry_status()),
+    )
+
+
+@router.websocket("/ws/exit-display")
+async def ws_exit_display(
+    websocket: WebSocket,
+    manager: ConnectionManager = Depends(get_connection_manager),
+    database: Database = Depends(get_database),
+    settings: Settings = Depends(get_settings),
+):
+    await _serve(
+        "exit", websocket, manager,
+        lambda: _snapshot(database, settings, lambda b: b.exit_status()),
+    )
