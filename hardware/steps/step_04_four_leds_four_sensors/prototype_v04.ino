@@ -1,18 +1,18 @@
-const int trgPin1 = 2;
-const int echoPin1 = 3;
+const int trgPin1 = 3;
+const int echoPin1 = 2;
 const int ledPin1 = 4;
 
-const int trgPin2 = 5;
-const int echoPin2 = 6;
+const int trgPin2 = 6;
+const int echoPin2 = 5;
 const int ledPin2 = 7;
 
-const int trgPin3 = 8;
+const int trgPin3 = 10;
 const int echoPin3 = 9;
-const int ledPin3 = 10;
+const int ledPin3 = 8;
 
-const int trgPin4 = 11;
+const int trgPin4 = 13;
 const int echoPin4 = 12;
-const int ledPin4 = 13;
+const int ledPin4 = 11;
 
 long duration;
 int distance;
