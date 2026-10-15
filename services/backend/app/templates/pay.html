@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking payment #{{ session.id }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #111;
+            background: #fff;
+            margin: 0;
+            padding: 48px 20px;
+            display: flex;
+            justify-content: center;
+        }
+        main { width: 100%; max-width: 340px; }
+        h1 {
+            font-size: 15px;
+            font-weight: 500;
+            color: #777;
+            margin: 0 0 32px;
+        }
+        .plate {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin: 0 0 24px;
+        }
+        dl { margin: 0; border-top: 1px solid #e5e5e5; }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e5e5;
+            font-size: 15px;
+        }
+        dt { color: #777; }
+        dd { margin: 0; }
+        .amount {
+            font-size: 40px;
+            font-weight: 600;
+            margin: 32px 0;
+        }
+        .amount small { font-size: 16px; font-weight: 400; color: #777; }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #111;
+            border-radius: 4px;
+            background: #111;
+            color: #fff;
+            font: inherit;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        button:disabled { background: #fff; color: #777; border-color: #ccc; cursor: default; }
+        .status { margin-top: 14px; font-size: 14px; min-height: 1.2em; }
+        .status.err { color: #b00020; }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Parking payment</h1>
+        <div class="plate">{{ session.plate_number }}</div>
+
+        <dl>
+            <div class="row"><dt>Time parked</dt><dd>{{ hours }}h {{ minutes }}m {{ seconds }}s</dd></div>
+            <div class="row"><dt>Session</dt><dd>#{{ session.id }}</dd></div>
+        </dl>
+
+        <div class="amount" id="amount">{{ "%.2f"|format(session.amount_due or 0) }} <small>KGS</small></div>
+
+        {% if already_paid %}
+            <button disabled>Paid</button>
+            <div class="status">The barrier is open. Drive safe.</div>
+        {% else %}
+            <button id="payBtn" onclick="pay()">Pay</button>
+            <div class="status" id="statusText"></div>
+        {% endif %}
+    </main>
+
+    <script>
+        async function pay() {
+            const btn = document.getElementById('payBtn');
+            const statusText = document.getElementById('statusText');
+            btn.disabled = true;
+            btn.innerText = 'Processing…';
+            statusText.className = 'status';
+            statusText.innerText = '';
+            try {
+                const resp = await fetch(`/api/pay/{{ session.id }}`, { method: 'POST' });
+                const data = await resp.json();
+                if (resp.ok) {
+                    btn.innerText = 'Paid';
+                    statusText.innerText = 'Payment received. The barrier is open.';
+                } else {
+                    btn.disabled = false;
+                    btn.innerText = 'Pay';
+                    statusText.className = 'status err';
+                    statusText.innerText = data.detail || 'Payment failed';
+                }
+            } catch (e) {
+                btn.disabled = false;
+                btn.innerText = 'Pay';
+                statusText.className = 'status err';
+                statusText.innerText = 'Network error. Please try again.';
+            }
+        }
+    </script>
+</body>
+</html>

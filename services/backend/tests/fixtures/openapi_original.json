@@ -1,0 +1,574 @@
+{
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "PaymentResult": {
+        "properties": {
+          "amount_paid": {
+            "title": "Amount Paid",
+            "type": "number"
+          },
+          "barrier_opened": {
+            "default": true,
+            "title": "Barrier Opened",
+            "type": "boolean"
+          },
+          "session_id": {
+            "title": "Session Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionStatus"
+          }
+        },
+        "required": [
+          "session_id",
+          "status",
+          "amount_paid"
+        ],
+        "title": "PaymentResult",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "amount_due": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Due"
+          },
+          "duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Seconds"
+          },
+          "entry_time": {
+            "format": "date-time",
+            "title": "Entry Time",
+            "type": "string"
+          },
+          "exit_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Time"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "paid_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Paid Time"
+          },
+          "parked_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parked Time"
+          },
+          "plate_number": {
+            "title": "Plate Number",
+            "type": "string"
+          },
+          "slot_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SessionStatus"
+          }
+        },
+        "required": [
+          "id",
+          "plate_number",
+          "status",
+          "entry_time"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "SessionStatus": {
+        "enum": [
+          "ENTERED",
+          "PARKED",
+          "AWAITING_PAYMENT",
+          "PAID",
+          "EMPLOYEE_PASS"
+        ],
+        "title": "SessionStatus",
+        "type": "string"
+      },
+      "SimEntryRequest": {
+        "properties": {
+          "plate_number": {
+            "default": "C123CC",
+            "title": "Plate Number",
+            "type": "string"
+          }
+        },
+        "title": "SimEntryRequest",
+        "type": "object"
+      },
+      "SimExitRequest": {
+        "properties": {
+          "plate_number": {
+            "default": "C123CC",
+            "title": "Plate Number",
+            "type": "string"
+          }
+        },
+        "title": "SimExitRequest",
+        "type": "object"
+      },
+      "SimSensorRequest": {
+        "properties": {
+          "occupied": {
+            "default": true,
+            "title": "Occupied",
+            "type": "boolean"
+          },
+          "plate_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Number"
+          }
+        },
+        "title": "SimSensorRequest",
+        "type": "object"
+      },
+      "SlotOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "slot_number": {
+            "title": "Slot Number",
+            "type": "string"
+          },
+          "slot_type": {
+            "$ref": "#/components/schemas/SlotType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SlotStatus"
+          }
+        },
+        "required": [
+          "id",
+          "slot_number",
+          "slot_type",
+          "status"
+        ],
+        "title": "SlotOut",
+        "type": "object"
+      },
+      "SlotStatus": {
+        "enum": [
+          "FREE",
+          "PARKED"
+        ],
+        "title": "SlotStatus",
+        "type": "string"
+      },
+      "SlotType": {
+        "enum": [
+          "PAID",
+          "EMPLOYEE"
+        ],
+        "title": "SlotType",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Макет умной парковки. Все датчики/камеры эмулируются",
+    "title": "Smart Parking Management System",
+    "version": "0.2"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "root__get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Проверка, что сервис жив",
+        "tags": [
+          "Служебное"
+        ]
+      }
+    },
+    "/api/pay/{session_id}": {
+      "post": {
+        "operationId": "confirm_payment_api_pay__session_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Подтвердить оплату",
+        "tags": [
+          "Оплата"
+        ]
+      }
+    },
+    "/api/sim/entry": {
+      "post": {
+        "operationId": "sim_entry_api_sim_entry_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SessionOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Sim Entry Api Sim Entry Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Въездная камера считала номер / сотрудник поднёс пропуск",
+        "tags": [
+          "Симуляция датчиков и камер"
+        ]
+      }
+    },
+    "/api/sim/exit": {
+      "post": {
+        "operationId": "sim_exit_api_sim_exit_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimExitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Выездная камера считала номер (выставляем счёт и QR)",
+        "tags": [
+          "Симуляция датчиков и камер"
+        ]
+      }
+    },
+    "/api/sim/sensor/{slot_id}": {
+      "post": {
+        "operationId": "sim_sensor_api_sim_sensor__slot_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "title": "Slot Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimSensorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Датчик слота сработал (машина встала/уехала с конкретного места)",
+        "tags": [
+          "Симуляция датчиков и камер"
+        ]
+      }
+    },
+    "/api/sim/sessions": {
+      "get": {
+        "operationId": "list_sessions_api_sim_sessions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SessionOut"
+                  },
+                  "title": "Response List Sessions Api Sim Sessions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Все сессии парковки (debug)",
+        "tags": [
+          "Симуляция датчиков и камер"
+        ]
+      }
+    },
+    "/api/sim/slots": {
+      "get": {
+        "operationId": "list_slots_api_sim_slots_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SlotOut"
+                  },
+                  "title": "Response List Slots Api Sim Slots Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Текущее состояние всех слотов (debug)",
+        "tags": [
+          "Симуляция датчиков и камер"
+        ]
+      }
+    },
+    "/pay/{session_id}": {
+      "get": {
+        "operationId": "pay_page_pay__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "title": "Session Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Страница оплаты (открывается по QR)",
+        "tags": [
+          "Оплата"
+        ]
+      }
+    }
+  }
+}
