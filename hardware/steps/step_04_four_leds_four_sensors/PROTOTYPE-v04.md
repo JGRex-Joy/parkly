@@ -28,4 +28,5 @@ Prototype v04 expands the Smart Parking System into a **fully automated 4-slot p
 
 ## Purpose
 
-This iteration introduces automated parking space detection using ultrasonic distance sensors. The Arduino measures the distance detected by each sensor and controls the corresponding LED based on the result. This prototype demonstrates the integration of multiple sensors, digital outputs, and a reusable function to manage all four parking spaces within a single system.
+This iteration introduces automated parking space detection using ultrasonic distance sensors. The Arduino measures the distance detected by each sensor and controls the corresponding LED based on the result. 
+This prototype demonstrates the integration of multiple sensors, digital outputs, and a reusable function to manage all four parking spaces within a single system.
