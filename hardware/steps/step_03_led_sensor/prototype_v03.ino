@@ -1,6 +1,6 @@
-const int trgPin = 8;
-const int echoPin = 9;
-const int ledPin = 10;
+const int ledPin = 7;
+const int echoPin = 8;
+const int trgPin = 9;
 
 long duration;
 int distance;
