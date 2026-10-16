@@ -1,0 +1,444 @@
+{
+  "components": {
+    "schemas": {
+      "Body_gate_event_with_photo_gate_event_with_photo_post": {
+        "properties": {
+          "file": {
+            "description": "JPEG/PNG кадр, уже снятый внешней камерой-системой",
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_gate_event_with_photo_gate_event_with_photo_post",
+        "type": "object"
+      },
+      "Body_recognize_recognize_post": {
+        "properties": {
+          "file": {
+            "description": "JPEG/PNG кадр с камеры",
+            "format": "binary",
+            "title": "File",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file"
+        ],
+        "title": "Body_recognize_recognize_post",
+        "type": "object"
+      },
+      "CameraSnapshotResponse": {
+        "properties": {
+          "image_base64": {
+            "title": "Image Base64",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "image_base64"
+        ],
+        "title": "CameraSnapshotResponse",
+        "type": "object"
+      },
+      "DetectionOut": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "confidence"
+        ],
+        "title": "DetectionOut",
+        "type": "object"
+      },
+      "GateEventResponse": {
+        "properties": {
+          "backend_response": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend Response"
+          },
+          "forwarded_to_backend": {
+            "title": "Forwarded To Backend",
+            "type": "boolean"
+          },
+          "frame_source": {
+            "title": "Frame Source",
+            "type": "string"
+          },
+          "recognized": {
+            "$ref": "#/components/schemas/RecognizeResponse"
+          },
+          "reject_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reject Reason"
+          }
+        },
+        "required": [
+          "recognized",
+          "forwarded_to_backend",
+          "frame_source"
+        ],
+        "title": "GateEventResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "RecognizeResponse": {
+        "properties": {
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "corrections_applied": {
+            "title": "Corrections Applied",
+            "type": "integer"
+          },
+          "formatted": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Formatted"
+          },
+          "is_valid_region": {
+            "title": "Is Valid Region",
+            "type": "boolean"
+          },
+          "plate_detection_method": {
+            "title": "Plate Detection Method",
+            "type": "string"
+          },
+          "plate_detection_score": {
+            "title": "Plate Detection Score",
+            "type": "number"
+          },
+          "plate_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plate Number"
+          },
+          "raw_detections": {
+            "items": {
+              "$ref": "#/components/schemas/DetectionOut"
+            },
+            "title": "Raw Detections",
+            "type": "array"
+          },
+          "region_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region Code"
+          }
+        },
+        "required": [
+          "plate_number",
+          "formatted",
+          "region_code",
+          "is_valid_region",
+          "corrections_applied",
+          "confidence",
+          "plate_detection_method",
+          "plate_detection_score",
+          "raw_detections"
+        ],
+        "title": "RecognizeResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Распознавание кыргызских автомобильных номеров через OpenCV + EasyOCR.",
+    "title": "Smart Parking - OCR Service (KG plates)",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/debug/camera-snapshot": {
+      "get": {
+        "operationId": "camera_snapshot_debug_camera_snapshot_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "gate",
+            "required": true,
+            "schema": {
+              "enum": [
+                "entry",
+                "exit"
+              ],
+              "title": "Gate",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CameraSnapshotResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "DEBUG: посмотреть, что именно видит камера (без распознавания, без сохранения на диск)"
+      }
+    },
+    "/gate-event/signal": {
+      "post": {
+        "operationId": "gate_event_signal_gate_event_signal_post",
+        "parameters": [
+          {
+            "description": "Какой шлагбаум сработал",
+            "in": "query",
+            "name": "gate",
+            "required": true,
+            "schema": {
+              "description": "Какой шлагбаум сработал",
+              "enum": [
+                "entry",
+                "exit"
+              ],
+              "title": "Gate",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "ЧИСТЫЙ сигнал с датчика (Arduino) — без файла, камера снимает сама"
+      }
+    },
+    "/gate-event/with-photo": {
+      "post": {
+        "operationId": "gate_event_with_photo_gate_event_with_photo_post",
+        "parameters": [
+          {
+            "description": "Какой шлагбаум сработал",
+            "in": "query",
+            "name": "gate",
+            "required": true,
+            "schema": {
+              "description": "Какой шлагбаум сработал",
+              "enum": [
+                "entry",
+                "exit"
+              ],
+              "title": "Gate",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_gate_event_with_photo_gate_event_with_photo_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateEventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "То же самое, но кадр уже снят и прислан файлом"
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Проверка, что сервис жив"
+      }
+    },
+    "/recognize": {
+      "post": {
+        "operationId": "recognize_recognize_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_recognize_recognize_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecognizeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Распознать номер на фото (без форварда в backend)"
+      }
+    }
+  }
+}
