@@ -1,6 +1,6 @@
 # Prototype v06
 
-Prototype v06 introduces **two servo motors** to the Smart Parking System. Both servos are controlled by the Arduino Uno and positioned at 90 degrees when the system starts. This prototype establishes the foundation for controlling two separate parking barriers.
+Prototype v06 introduces **two servo motors** to the Smart Parking System. Both servos are controlled by the Arduino Uno and move to **90 degrees** and remain at that position for 2 seconds than turns to **0 degrees**.
 
 ---
 
@@ -24,5 +24,5 @@ Prototype v06 introduces **two servo motors** to the Smart Parking System. Both 
 
 ## Purpose
 
-This iteration demonstrates the simultaneous control of two servo motors using the Arduino Servo library. When the Arduino starts, both servos move to **90 degrees** and remain at that position. The breadboard provides a convenient way to distribute power and ground connections to both servos. 
+This iteration demonstrates the simultaneous control of two servo motors using the Arduino Servo library. When the Arduino starts, both servos move to **90 degrees** and remain at that position for 2 seconds than turns to **0 degrees**. The breadboard provides a convenient way to distribute power and ground connections to both servos. 
 This prototype prepares the system for future integration, where the two servos can operate as separate parking barriers controlled by ultrasonic sensors.
