@@ -11,7 +11,7 @@ Prototype v08 combines **four ultrasonic parking sensors, four LED indicators, a
 - **6x HC-SR04 Ultrasonic Distance Sensors**
 - **4x Red LEDs**
 - **4x Current-limiting resistors**
-- **2x Servo Motors** (e.g., SG90)
+- **2x Servo Motors**
 - Jumper wires
 
 ---
@@ -34,5 +34,4 @@ Prototype v08 combines **four ultrasonic parking sensors, four LED indicators, a
 ## Purpose
 
 This prototype integrates parking occupancy detection with automated gate control. Four ultrasonic sensors monitor individual parking spaces, with LEDs indicating occupancy. Two additional sensors control the entrance and exit gates through servo motors.
-
 If all four parking spaces are occupied, the entrance gate remains closed. The exit gate can still open when a vehicle is detected, allowing vehicles to leave regardless of parking availability.
