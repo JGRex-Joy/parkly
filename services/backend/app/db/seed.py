@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from sqlalchemy import func, select
@@ -15,8 +14,8 @@ DEFAULT_TARIFF = {
     "is_active": True,
 }
 DEFAULT_EMPLOYEES = (
-    ("A001AA", "Иванов И.И."),
-    ("B777BB", "Петров П.П."),
+    ("09KG111KUN", "Кенешбеков У.Н."),
+    ("03KG222KAA", "Кабылбаева А.А."),
 )
 
 

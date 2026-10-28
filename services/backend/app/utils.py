@@ -1,7 +1,7 @@
-
 from __future__ import annotations
 
 import base64
+import re
 from datetime import datetime, timezone
 from io import BytesIO
 from typing import Optional, Tuple
@@ -10,12 +10,19 @@ import qrcode
 
 
 def utcnow() -> datetime:
-    """Naive UTC timestamp (the format already stored in the database)."""
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+_PLATE_SEPARATORS = re.compile(r"[\s\-_.]+")
+
+
 def normalize_plate(plate_number: str) -> str:
-    return plate_number.upper()
+    return _PLATE_SEPARATORS.sub("", plate_number or "").upper()
+
+
+def is_plausible_plate(plate_number: str) -> bool:
+    canon = normalize_plate(plate_number)
+    return 2 <= len(canon) <= 16 and canon.isalnum()
 
 
 def generate_qr_base64(data: str) -> str:

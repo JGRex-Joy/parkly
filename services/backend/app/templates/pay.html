@@ -58,6 +58,7 @@
         button:disabled { background: #fff; color: #777; border-color: #ccc; cursor: default; }
         .status { margin-top: 14px; font-size: 14px; min-height: 1.2em; }
         .status.err { color: #b00020; }
+        .banner { background: #fff3cd; color: #664d03; border-radius: 4px; padding: 8px 10px; font-size: 13px; margin-bottom: 12px; }
     </style>
 </head>
 <body>
@@ -70,18 +71,36 @@
             <div class="row"><dt>Session</dt><dd>#{{ session.id }}</dd></div>
         </dl>
 
-        <div class="amount" id="amount">{{ "%.2f"|format(session.amount_due or 0) }} <small>KGS</small></div>
+        <div class="amount" id="amount">{{ "%.2f"|format(session.amount_due or 0) }} <small>{{ currency }}</small></div>
 
         {% if already_paid %}
             <button disabled>Paid</button>
-            <div class="status">The barrier is open. Drive safe.</div>
-        {% else %}
-            <button id="payBtn" onclick="pay()">Pay</button>
+            <div class="status">Payment received. Exit is authorised; the barrier opens at the exit gate.</div>
+        {% elif not awaiting_payment %}
+            <button disabled>Not available</button>
+            <div class="status err">No bill is open for this session.</div>
+        {% elif simulated_mode %}
+            <div class="banner">TEST MODE: simulated payment. No real money is charged.</div>
+            <button id="payBtn" onclick="pay()">Simulate payment</button>
             <div class="status" id="statusText"></div>
+        {% else %}
+            <button disabled id="payBtn">Waiting for payment confirmation</button>
+            <div class="status" id="statusText">
+                Reference: <b>{{ payment.reference if payment else "-" }}</b><br>
+                Complete the payment with your payment provider. This page updates when it is verified.
+            </div>
         {% endif %}
     </main>
 
     <script>
+        const SID = {{ session.id }};
+        function showPaid() {
+            const btn = document.getElementById('payBtn');
+            const st = document.getElementById('statusText');
+            if (btn) { btn.disabled = true; btn.innerText = 'Paid'; }
+            if (st) { st.className = 'status'; st.innerText = 'Payment verified. Exit is authorised; the barrier opens at the exit gate.'; }
+        }
+        {% if simulated_mode %}
         async function pay() {
             const btn = document.getElementById('payBtn');
             const statusText = document.getElementById('statusText');
@@ -90,24 +109,34 @@
             statusText.className = 'status';
             statusText.innerText = '';
             try {
-                const resp = await fetch(`/api/pay/{{ session.id }}`, { method: 'POST' });
+                const resp = await fetch(`/api/pay/${SID}`, { method: 'POST' });
                 const data = await resp.json();
-                if (resp.ok) {
-                    btn.innerText = 'Paid';
-                    statusText.innerText = 'Payment received. The barrier is open.';
-                } else {
+                if (resp.ok) { showPaid(); }
+                else {
                     btn.disabled = false;
-                    btn.innerText = 'Pay';
+                    btn.innerText = 'Simulate payment';
                     statusText.className = 'status err';
                     statusText.innerText = data.detail || 'Payment failed';
                 }
             } catch (e) {
                 btn.disabled = false;
-                btn.innerText = 'Pay';
+                btn.innerText = 'Simulate payment';
                 statusText.className = 'status err';
                 statusText.innerText = 'Network error. Please try again.';
             }
         }
+        {% endif %}
+        {% if awaiting_payment and not simulated_mode %}
+        const timer = setInterval(async () => {
+            try {
+                const r = await fetch(`/api/pay/${SID}/status`);
+                const d = await r.json();
+                if (d.exit_authorized || d.session_status === 'PAID' || d.session_status === 'COMPLETED') {
+                    clearInterval(timer); showPaid();
+                }
+            } catch (e) 
+        }, 3000);
+        {% endif %}
     </script>
 </body>
 </html>

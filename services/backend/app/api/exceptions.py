@@ -32,3 +32,15 @@ class SlotOccupiedError(ConflictError):
 
 class ConfigurationError(ParkingError):
     status_code = 503
+
+
+class ValidationFailedError(ParkingError):
+    status_code = 422
+
+
+class ForbiddenError(ParkingError):
+    status_code = 403
+
+
+class AmbiguousVehicleError(ConflictError):
+    pass

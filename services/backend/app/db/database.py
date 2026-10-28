@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from sqlalchemy import Engine, create_engine, event
@@ -19,13 +18,6 @@ def _is_memory_sqlite(url: str) -> bool:
 
 
 class Database:
-    """Owns the engine and hands out sessions.
-
-    On SQLite every transaction starts with ``BEGIN IMMEDIATE`` so a
-    read-then-write sequence (e.g. "is there a free space? then take it") is
-    serialised across threads *and* processes. Foreign keys are enforced.
-    """
-
     def __init__(self, url: str, *, echo: bool = False) -> None:
         self.url = url
         kwargs: dict = {"echo": echo}
@@ -44,7 +36,7 @@ class Database:
     def _configure_sqlite(engine: Engine) -> None:
         @event.listens_for(engine, "connect")
         def _on_connect(dbapi_connection, _record) -> None:
-            dbapi_connection.isolation_level = None  # we emit BEGIN ourselves
+            dbapi_connection.isolation_level = None  
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
