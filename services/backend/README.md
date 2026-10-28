@@ -22,3 +22,40 @@ Run: `uvicorn app.main:app` · Tests: `pytest`
   when the bill is paid (unchanged). Manual sensor release detaches only the session that
   holds that space.
 
+## Migration (automatic, at startup, idempotent, non-destructive)
+1. Adds `slots.is_active` and `parking_sessions.slot_released_at` if missing and backfills
+   space ownership (finished sessions released; of several sessions linked to one space only the
+   newest holds it).
+2. Creates the unique index `uq_parking_sessions_active_slot` (one holder per space).
+3. Makes P1-P4 the active spaces and deactivates every other space (legacy E1/E2) - rows are
+   kept so history stays valid. Works from the original six-space DB and from the previous
+   2 regular + 2 staff version.
+4. Repairs spaces flagged occupied that no session holds.
+
+Vehicles still in a retired space keep their session: they can exit/pay normally (which frees
+the space), they count against capacity until then, and `sensor occupied=false` on the retired
+space id clears them manually. Nothing depends on slot ids being sequential.
+
+## Concurrency
+Every write use case runs in one transaction under a single lock over the spaces
+(`BEGIN IMMEDIATE` on SQLite, `SELECT ... FOR UPDATE` elsewhere); a compare-and-set on the
+space and the partial unique index guard against double-booking at the database level.
+
+## Dashboard WebSocket: `WS /ws/parking`
+On connect: `INITIAL_STATE` (`slots[]`, `sessions[]` with phase ENTERING/PARKED/EXITING). The manager keeps this
+active-session state in memory (rebuilt from the DB on startup), so late joiners can replay the scene.
+
+| REST (`/api/v1`, `X-Service-Token` if configured) | Broadcast |
+|---|---|
+| `POST /entry {plate}` | `{"event":"ENTRY_OCR","plate"}` |
+| `POST /slots/update {slot_id, occupied, plate}` | `SLOT_OCCUPIED {slot_id, plate}` / `SLOT_RELEASED {slot_id}` |
+| `POST /exit {plate}` | `EXIT_OCR {slot_id, plate, duration "HH:MM:SS", fee}` (+ `PAYMENT_CONFIRMED` for free stays / staff) |
+| `POST /payment/confirm {plate}` | `PAYMENT_CONFIRMED {plate}` (simulated payment mode only; real providers confirm via webhook, which broadcasts too) |
+| `GET /sessions` | session history for the CRM |
+
+The legacy `/api/sim/*`, hardware and webhook flows emit the same events from the service layer.
+
+## Fix: 409 on re-entry
+A plate whose previous visit is finished (`PAID`/`COMPLETED`) can enter again. Only unfinished sessions
+(`ENTERED`, `PARKED`, `AWAITING_PAYMENT`, open `EMPLOYEE_PASS`) block entry. A `PAID` session whose barrier
+confirmation never arrived is closed (`COMPLETED`, audit `exit_assumed_on_reentry`) when the plate enters again.

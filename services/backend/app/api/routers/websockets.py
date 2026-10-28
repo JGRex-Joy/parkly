@@ -7,7 +7,8 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.core.config import Settings
 from app.db.database import Database
-from app.api.dependencies import get_connection_manager, get_database, get_settings
+from app.api.dependencies import get_connection_manager, get_database, get_provider, get_settings
+from app.services.payment_providers import PaymentProvider
 from app.repositories import Repositories
 from app.services.display import DisplayPayloadBuilder
 from app.websocket_manager import ConnectionManager
@@ -16,11 +17,21 @@ router = APIRouter(tags=["WebSocket дисплеи"])
 
 
 def _snapshot(
-    database: Database, settings: Settings, build: Callable[[DisplayPayloadBuilder], dict]
+    database: Database,
+    settings: Settings,
+    provider: PaymentProvider,
+    build: Callable[[DisplayPayloadBuilder], dict],
 ) -> dict:
-    # Short-lived session: never keep a transaction open for the socket's lifetime.
     with database.session() as db:
-        return build(DisplayPayloadBuilder(Repositories.for_session(db), settings.base_url))
+        return build(
+            DisplayPayloadBuilder(
+                Repositories.for_session(db),
+                settings.base_url,
+                currency=settings.currency,
+                payment_simulated=provider.is_simulated,
+                auth_ttl_seconds=settings.auth_ttl_seconds,
+            )
+        )
 
 
 async def _serve(
@@ -46,10 +57,11 @@ async def ws_entry_display(
     manager: ConnectionManager = Depends(get_connection_manager),
     database: Database = Depends(get_database),
     settings: Settings = Depends(get_settings),
+    provider: PaymentProvider = Depends(get_provider),
 ):
     await _serve(
         "entry", websocket, manager,
-        lambda: _snapshot(database, settings, lambda b: b.entry_status()),
+        lambda: _snapshot(database, settings, provider, lambda b: b.entry_status()),
     )
 
 
@@ -59,8 +71,9 @@ async def ws_exit_display(
     manager: ConnectionManager = Depends(get_connection_manager),
     database: Database = Depends(get_database),
     settings: Settings = Depends(get_settings),
+    provider: PaymentProvider = Depends(get_provider),
 ):
     await _serve(
         "exit", websocket, manager,
-        lambda: _snapshot(database, settings, lambda b: b.exit_status()),
+        lambda: _snapshot(database, settings, provider, lambda b: b.exit_status()),
     )

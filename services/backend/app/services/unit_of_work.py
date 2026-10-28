@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -34,7 +33,6 @@ class UnitOfWork:
 
     @contextmanager
     def transaction(self) -> Iterator[Outbox]:
- 
         outbox = Outbox()
         try:
             self._slots.lock_all()

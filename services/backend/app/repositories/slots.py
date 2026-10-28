@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 from typing import Optional
@@ -49,7 +48,6 @@ class SlotRepository:
         return self._db.scalar(stmt) or 0
 
     def lock_all(self) -> None:
-
         self._db.execute(
             select(Slot.id).where(Slot.is_active.is_(True)).order_by(Slot.id).with_for_update()
         ).all()

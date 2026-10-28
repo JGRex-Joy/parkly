@@ -6,9 +6,14 @@ from fastapi import APIRouter, Depends
 
 from app import schemas
 from app.api.dependencies import get_parking_service
+from app.api.security import require_service_token
 from app.services.parking import ParkingService
 
-router = APIRouter(prefix="/api/sim", tags=["Симуляция датчиков и камер"])
+router = APIRouter(
+    prefix="/api/sim",
+    tags=["Симуляция датчиков и камер"],
+    dependencies=[Depends(require_service_token)],
+)
 
 
 @router.post("/entry", response_model=Optional[schemas.SessionOut],
@@ -17,7 +22,6 @@ def sim_entry(
     payload: schemas.SimEntryRequest, service: ParkingService = Depends(get_parking_service)
 ):
     session = service.register_entry(payload.plate_number)
-    # Public contract: staff entries are answered with ``null`` (they are not billed).
     return None if session.is_staff else session
 
 

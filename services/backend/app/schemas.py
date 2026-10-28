@@ -1,4 +1,3 @@
-"""Request / response models (the public API contract)."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -10,7 +9,7 @@ from app.db.models import SessionStatus, SlotStatus, SlotType
 
 
 class SimEntryRequest(BaseModel):
-    plate_number: str = "C123CC"
+    plate_number: str = "01KG111AAA"
 
 
 class SimSensorRequest(BaseModel):
@@ -19,7 +18,7 @@ class SimSensorRequest(BaseModel):
 
 
 class SimExitRequest(BaseModel):
-    plate_number: str = "C123CC"
+    plate_number: str = "01KG111AAA"
 
 
 class TariffOut(BaseModel):
@@ -51,13 +50,46 @@ class SessionOut(BaseModel):
     duration_seconds: Optional[int] = None
     amount_due: Optional[float] = None
     slot_id: Optional[int] = None
+    # additive fields
+    slot_assignment: Optional[str] = None
+    exit_authorized_at: Optional[datetime] = None
+    completed_time: Optional[datetime] = None
+    exception_reason: Optional[str] = None
+
+
+class BarrierEventIn(BaseModel):
+    event_id: str
+    gate: str
+    event: str
+    plate_number: Optional[str] = None
+
+
+class BarrierAckIn(BaseModel):
+    event_id: Optional[str] = None
+
+
+class OverrideIn(BaseModel):
+    reason: str
+
+
+class PaymentStatusOut(BaseModel):
+    session_id: int
+    session_status: SessionStatus
+    payment_status: Optional[str] = None
+    amount: Optional[float] = None
+    currency: Optional[str] = None
+    reference: Optional[str] = None
+    simulated: bool = False
+    exit_authorized: bool = False
 
 
 class PaymentResult(BaseModel):
     session_id: int
     status: SessionStatus
     amount_paid: float
-    barrier_opened: bool = True
+    barrier_opened: bool = False
+    exit_authorized: bool = True
+    simulated: bool = False
 
 
 class SlotReleaseOut(BaseModel):
