@@ -1,4 +1,4 @@
-prototype_v04#include <Servo.h>
+#include <Servo.h>
 
 const int servoPin1 = 9;
 const int servoPin2 = 10;

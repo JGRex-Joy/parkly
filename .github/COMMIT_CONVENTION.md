@@ -28,8 +28,7 @@ To maintain a clean and readable project history, we follow the **Conventional C
 * `mobile` — React Native application
 * `ocr` — License plate recognition service
 * `bridge` — PySerial hardware gateway (Arduino ↔ Backend)
-* `arduino` — Arduino C++ firmware sketches
-* `tinkercad` — 3D models and breadboard schematics
+* `arduino` — Arduino C++ firmware sketches, 3D models and breadboard schematics
 * `docs` — Project documentation
 * `github` —`.github` workflows, templates, and configurations
 
