@@ -25,7 +25,7 @@ class ServiceContainer:
         manager = CameraManager(settings)
         camera_service = CameraService(settings, manager, FixtureRepository(settings.fixtures_dir))
         recognition = RecognitionService(ocr_model, settings.ocr)
-        gate = GateService(recognition, BackendRepository(settings.backend_base_url), settings.max_corrections_to_trust)
+        gate = GateService(recognition, BackendRepository(settings.backend_base_url, settings.backend_timeout_seconds, settings.backend_service_token), settings.max_corrections_to_trust)
         return cls(settings, ocr_model, manager, camera_service, recognition, gate)
 
     def start(self) -> None:

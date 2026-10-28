@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Callable, Tuple
 
-from app.cameras import CameraManager, CameraUnavailableError
+from app.cameras import CameraError, CameraManager, CameraUnavailableError
 from app.config import Settings
 from app.repositories import FixtureRepository
 from app.utils.image import encode_jpeg
@@ -42,5 +42,9 @@ class CameraService:
                 raise
             logger.warning("Камера для '%s' недоступна (%s); использую файл-заглушку", gate, exc)
             image, source = fixture, "fixture"
+        except CameraError as exc:
+            logger.error("Съёмка для '%s' не удалась: %s", gate, exc)
+            raise
 
+        logger.info("Кадр для '%s' получен: источник=%s, %dx%d", gate, source, image.shape[1], image.shape[0])
         return encode_jpeg(image), source

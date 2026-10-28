@@ -11,33 +11,37 @@ sys.path.insert(0, str(ROOT))
 import cv2  
 
 import app  
-from app.cameras import IpCameraSource, discover_usb_cameras, validate_stream_url  
-from app.cameras.usb_camera import _open_index, resolve_backend  
-from app.config import CameraReliability, IpCameraSettings  
+from app.cameras import IpCameraSource, discover_usb_cameras, resolve_backends, validate_stream_url
+from app.cameras.usb_camera import _open_index, _read_good_frame
+from app.config import CameraReliability, IpCameraSettings
 
-def probe_usb(backends, limit, ignore, save_dir):
+def probe_usb(backends, limit, ignore, save_dir, probe_seconds=4.0):
     found_any = False
     for name in backends:
-        print(f"--- USB, бэкенд {name} ---")
-        cams = discover_usb_cameras(name, limit, ignore)
+        print(f"--- локальные камеры, бэкенд {name} ---")
+        cams = discover_usb_cameras(name, limit, ignore, probe_seconds=probe_seconds)
         if not cams:
             print("  камер не найдено")
             continue
-        found_any = True
         for cam in cams:
-            print(f"  индекс {cam.index}: {cam.width}x{cam.height}   -> CAMERA_USB_INDEX={cam.index} CAMERA_USB_BACKEND={name}")
+            if cam.black:
+                print(f"  индекс {cam.index}: {cam.width}x{cam.height}  ЧЁРНЫЕ КАДРЫ — запустите Iriun на телефоне "
+                      f"или попробуйте другой --backend")
+            else:
+                found_any = True
+                print(f"  индекс {cam.index}: {cam.width}x{cam.height}  OK   -> CAMERA_<USB|WIFI>_INDEX={cam.index} "
+                      f"CAMERA_<USB|WIFI>_BACKEND={name}")
             if save_dir:
-                capture = _open_index(cam.index, resolve_backend(name))
+                capture = _open_index(cam.index, resolve_backends(name)[0][1])
                 try:
-                    for _ in range(5):
-                        capture.read()
-                    ok, frame = capture.read()
+                    good, black, _ = _read_good_frame(capture, probe_seconds)
                 finally:
                     capture.release()
-                if ok:
-                    path = save_dir / f"usb_{name}_{cam.index}.jpg"
+                frame = good if good is not None else black
+                if frame is not None:
+                    path = save_dir / f"local_{name}_{cam.index}.jpg"
                     cv2.imwrite(str(path), frame)
-                    print(f"    снимок: {path}")
+                    print(f"    снимок: {path}  (откройте и убедитесь, что это нужная камера)")
     return found_any
 
 
@@ -54,7 +58,7 @@ def probe_ip(url, save_dir, timeout):
     started = time.monotonic()
     try:
         frame = source.get_frame(timeout=timeout)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:  
         print(f"  НЕ ПОДКЛЮЧИЛАСЬ за {timeout:.0f} с: {exc}")
         return False
     finally:
@@ -71,20 +75,21 @@ def probe_ip(url, save_dir, timeout):
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--backend", action="append", choices=["auto", "dshow", "msmf", "v4l2", "any"],
-                        help="бэкенд USB (можно несколько раз); по умолчанию auto")
+                        help="бэкенд (можно несколько раз); по умолчанию — вся цепочка auto для вашей ОС")
     parser.add_argument("--limit", type=int, default=8, help="сколько индексов перебрать (по умолчанию 8)")
     parser.add_argument("--ignore", type=int, action="append", default=[], help="пропустить индекс (например, встроенную камеру)")
     parser.add_argument("--ip", help="URL потока телефона, например http://192.168.1.50:8080/video")
     parser.add_argument("--timeout", type=float, default=10.0, help="сколько ждать кадр от IP-камеры, с")
     parser.add_argument("--save", type=Path, help="папка для снимков")
-    parser.add_argument("--skip-usb", action="store_true", help="не перебирать USB-камеры")
+    parser.add_argument("--skip-usb", action="store_true", help="не перебирать локальные камеры")
     args = parser.parse_args()
 
     if args.save:
         args.save.mkdir(parents=True, exist_ok=True)
     ok = True
     if not args.skip_usb:
-        ok = probe_usb(args.backend or ["auto"], args.limit, tuple(args.ignore), args.save) and ok
+        backends = args.backend or [name for name, _ in resolve_backends("auto")]
+        ok = probe_usb(backends, args.limit, tuple(args.ignore), args.save) and ok
     if args.ip:
         ok = probe_ip(args.ip, args.save, args.timeout) and ok
     return 0 if ok else 1

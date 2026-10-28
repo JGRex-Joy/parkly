@@ -1,8 +1,3 @@
-"""Интеграционные тесты IP-камеры на настоящем MJPEG-потоке по HTTP (так отдаёт видео «IP Webcam» на Android).
-
-Источник подключается через реальный cv2.VideoCapture/FFmpeg к локальному серверу; сервер можно остановить
-и поднять снова, чтобы проверить переподключение на живом сетевом соединении.
-"""
 import socket
 import threading
 import time
@@ -116,7 +111,7 @@ def test_frames_keep_flowing_and_newer_than_is_respected(server):
         requested_at = time.monotonic()
         later = source.get_frame(newer_than=requested_at)
         assert later.captured_at >= requested_at > first.captured_at
-        assert not np.array_equal(first.image, later.image)  # счётчик на кадре меняется — кадры живые, не залипшие
+        assert not np.array_equal(first.image, later.image)  
     finally:
         source.stop()
 
@@ -127,11 +122,11 @@ def test_reconnects_after_stream_is_lost_and_restored(server):
     restarted = None
     try:
         source.get_frame()
-        server.stop()                                        # телефон пропал из сети
+        server.stop()                                        
         assert wait_until(lambda: source.state is not ConnectionState.CONNECTED)
         with pytest.raises(CameraUnavailableError):
-            source.get_frame(timeout=0.5)                    # устаревший кадр не отдаётся
-        restarted = MjpegServer(port)                        # телефон вернулся
+            source.get_frame(timeout=0.5)                    
+        restarted = MjpegServer(port)                        
         assert source.get_frame(timeout=15).image.shape == PLATE.shape
         assert source.state is ConnectionState.CONNECTED
     finally:

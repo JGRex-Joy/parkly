@@ -8,15 +8,15 @@ from app.models import GlyphSlot, Segmentation
 from app.services.plate_format import SLOT_COUNT
 from app.services.preprocessing import NormalizedLine
 
-WIDTH_LAMBDA = 1.1        # штраф за отклонение ширины позиции от шага
-MIN_WIDTH_FACTOR = 0.45   # допустимый диапазон ширины позиции относительно шага
+WIDTH_LAMBDA = 1.1        
+MIN_WIDTH_FACTOR = 0.45   
 MAX_WIDTH_FACTOR = 1.75
-MULTI_GLYPH_GAP = 0.15      # зазор между пятнами внутри одной позиции (в высотах символа), после которого это два символа
-MULTI_GLYPH_PENALTY = 0.3   # множитель оценки за каждую позицию, в которую попало два отдельных символа
-TRUNCATION_PENALTY = 0.6    # текст упирается в край кропа — вероятно, строка обрезана
-MIN_SLOT_INK = 0.05       # доля от (высота символа)^2: меньше — позиция пуста
-PITCH_RANGE = (0.4, 1.8)   # допустимый шаг символов в высотах символа
-RUN_RANGE = (5, 16)         # сколько отдельных «пятен» символов допустимо в строке из 10 позиций
+MULTI_GLYPH_GAP = 0.15     
+MULTI_GLYPH_PENALTY = 0.3  
+TRUNCATION_PENALTY = 0.6   
+MIN_SLOT_INK = 0.05       
+PITCH_RANGE = (0.4, 1.8)   
+RUN_RANGE = (5, 16)         
 
 
 def _column_profile(ink: np.ndarray, band: tuple, text_height: float) -> np.ndarray:
@@ -106,7 +106,7 @@ def segment_line(line: NormalizedLine, count: int = SLOT_COUNT) -> Optional[Segm
     if not (PITCH_RANGE[0] * line.text_height <= pitch <= PITCH_RANGE[1] * line.text_height):
         return None
     runs = _count_runs(profile[xa:xb])
-    if not (RUN_RANGE[0] <= runs <= RUN_RANGE[1]):   # 4 символа, разрезанные на 10 частей, — не номер
+    if not (RUN_RANGE[0] <= runs <= RUN_RANGE[1]):   
         return None
 
     cuts = _best_cuts(profile, xa, xb, count)
@@ -121,11 +121,11 @@ def segment_line(line: NormalizedLine, count: int = SLOT_COUNT) -> Optional[Segm
         a, b = cuts[i], cuts[i + 1]
         ink_per_slot.append(float((line.ink[y0:y1, a:b] > 0).sum()) / line.text_height ** 2)
         cols = np.where(profile[a:b] > 0)[0]
-        if len(cols):  # плотно по чернилам
+        if len(cols):  
             a, b = a + int(cols[0]), a + int(cols[-1]) + 1
         slots.append(GlyphSlot(index=i, x0=int(a), x1=int(b), y0=y0, y1=y1))
 
-    if min(ink_per_slot) < MIN_SLOT_INK:   # в какой-то позиции нет символа — строка короче номера
+    if min(ink_per_slot) < MIN_SLOT_INK:   
         return Segmentation(gray=line.gray, slots=slots, score=0.0)
 
     gap_quality = float(np.mean([1.0 - min(_boundary_ink(profile, c), 1.0) for c in cuts[1:-1]]))
@@ -134,7 +134,6 @@ def segment_line(line: NormalizedLine, count: int = SLOT_COUNT) -> Optional[Segm
     score = 0.6 * gap_quality + 0.4 * regularity
     if xa <= 1 or xb >= profile.size - 1:
         score *= TRUNCATION_PENALTY
-    # в позицию попало два отдельных символа — в строке больше 10 символов, это не наш номер
     crowded = sum(1 for i in range(count) if _blob_count(profile[cuts[i]:cuts[i + 1]], line.text_height) >= 2)
     score *= MULTI_GLYPH_PENALTY ** crowded
     return Segmentation(gray=line.gray, slots=slots, score=float(np.clip(score, 0.0, 1.0)))

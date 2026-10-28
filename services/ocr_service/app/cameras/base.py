@@ -10,25 +10,25 @@ import numpy as np
 
 from app.config import CameraReliability
 from app.models import CapturedFrame, ConnectionState
+from app.utils.image import frame_problem
 
 logger = logging.getLogger("ocr_service.cameras")
 
 
 class CameraError(RuntimeError):
-    """Базовая ошибка камеры. Наследует RuntimeError, как и исходный код."""
-
+    pass
 
 class CameraConnectError(CameraError):
-    """Не удалось открыть устройство или поток."""
-
+    pass
 
 class CameraUnavailableError(CameraError):
-    """Камера не подключена (нет соединения / источник выключен)."""
-
+    pass
 
 class CameraTimeoutError(CameraError):
-    """Камера подключена, но свежий кадр не пришёл вовремя."""
+    pass
 
+class CameraBlackFrameError(CameraTimeoutError):
+    pass
 
 class VideoCaptureLike(Protocol):
     def isOpened(self) -> bool: ...
@@ -37,8 +37,6 @@ class VideoCaptureLike(Protocol):
 
 
 class CameraSource(abc.ABC):
-    """Источник кадров с автоматическим переподключением."""
-
     frame_source: str = "camera"
 
     def __init__(
@@ -57,12 +55,16 @@ class CameraSource(abc.ABC):
         self._frame: Optional[CapturedFrame] = None
         self._state = ConnectionState.STOPPED
         self._last_error: Optional[str] = None
-        self._closed = False  
+        self._closed = False
+        self._last_rejection: Optional[Tuple[float, str]] = None  
+        self._rejected_total = 0
+        self._rejected_since_ok = 0
+        self._last_reject_log = float("-inf")
 
     @abc.abstractmethod
     def _open_capture(self) -> VideoCaptureLike:
-        """Возвращает открытое устройство или бросает CameraConnectError."""
-
+        pass
+    
     @property
     def state(self) -> ConnectionState:
         return self._state
@@ -74,6 +76,34 @@ class CameraSource(abc.ABC):
     @property
     def is_running(self) -> bool:
         return self._thread is not None and self._thread.is_alive()
+
+    def _frame_problem(self, image) -> Optional[str]:
+        if image is None or getattr(image, "size", 0) == 0:
+            return "пустой кадр"
+        if not self._rel.reject_black_frames:
+            return None
+        return frame_problem(image, self._rel.black_mean_threshold, self._rel.black_peak_threshold)
+
+    def _note_rejection(self, reason: str) -> None:
+        now = self._clock()
+        self._last_rejection = (now, reason)
+        self._rejected_total += 1
+        self._rejected_since_ok += 1
+        if now - self._last_reject_log >= 5.0:
+            self._last_reject_log = now
+            logger.warning("camera %s: кадр отброшен: %s (отброшено подряд: %d)", self.name, reason, self._rejected_since_ok)
+
+    def _note_valid_frame(self) -> None:
+        if self._last_rejection is not None:
+            logger.info("camera %s: снова приходят нормальные кадры (отброшено перед этим: %d)", self.name, self._rejected_since_ok)
+        self._last_rejection = None
+        self._rejected_since_ok = 0
+
+    def _recent_rejection(self, window: float) -> Optional[str]:
+        rejection = self._last_rejection
+        if rejection is not None and self._clock() - rejection[0] <= window:
+            return rejection[1]
+        return None
 
     def _set_state(self, state: ConnectionState) -> None:
         with self._cond:
@@ -124,6 +154,14 @@ class CameraSource(abc.ABC):
                     raise CameraUnavailableError(f"источник '{self.name}' остановлен")
                 remaining = deadline - self._clock()
                 if remaining <= 0:
+                    black = self._recent_rejection(2 * max(timeout, self._rel.stall_timeout))
+                    if black is not None:
+                        logger.error("camera %s: съёмка не удалась, камера отдаёт непригодные кадры: %s", self.name, black)
+                        raise CameraBlackFrameError(
+                            f"камера '{self.name}' отдаёт только чёрные/пустые кадры за {timeout:.1f} с ({black}); "
+                            "проверьте, что приложение Iriun на телефоне запущено, экран не заблокирован, "
+                            "и что индекс устройства указан верно"
+                        )
                     if self._state is ConnectionState.CONNECTED:
                         raise CameraTimeoutError(f"нет свежего кадра от '{self.name}' за {timeout:.1f} с")
                     detail = f": {self._last_error}" if self._last_error else ""
@@ -169,21 +207,30 @@ class CameraSource(abc.ABC):
             ok, image = capture.read()
             now = self._clock()
             if ok and image is not None and image.size > 0:
-                last_ok = now
-                with self._cond:
-                    self._frame = CapturedFrame(image=image, captured_at=now, source=self.frame_source)
-                    self._cond.notify_all()
+                problem = self._frame_problem(image)
+                if problem is None:
+                    last_ok = now
+                    self._note_valid_frame()
+                    with self._cond:
+                        self._frame = CapturedFrame(image=image, captured_at=now, source=self.frame_source)
+                        self._cond.notify_all()
+                    continue
+                self._note_rejection(problem)
+                if now - last_ok > self._rel.stall_timeout:
+                    raise CameraConnectError(
+                        f"'{self.name}': только непригодные кадры более {self._rel.stall_timeout:.1f} с ({problem}), переподключаюсь"
+                    )
                 continue
             if now - last_ok > self._rel.stall_timeout:
                 raise CameraConnectError(
                     f"'{self.name}': нет кадров более {self._rel.stall_timeout:.1f} с, переподключаюсь"
                 )
-            self._stop_event.wait(0.05)  
+            self._stop_event.wait(0.05)
 
     def _safe_release(self, capture: Optional[VideoCaptureLike]) -> None:
         if capture is None:
             return
         try:
             capture.release()
-        except Exception:  # noqa: BLE001
+        except Exception:  
             logger.exception("camera %s: ошибка при освобождении устройства", self.name)

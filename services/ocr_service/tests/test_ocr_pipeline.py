@@ -1,8 +1,3 @@
-"""Тесты конвейера распознавания номера DD LL DDD LLL.
-
-Часть без модели (предобработка, сегментация, поиск области) работает всегда. Тесты с пометкой ocr_model
-используют настоящий EasyOCR и пропускаются, если модель недоступна (нет пакета или нет сети для весов).
-"""
 from pathlib import Path
 
 import cv2
@@ -27,14 +22,13 @@ def segment(img):
     return (line, segment_line(line)) if line is not None else (None, None)
 
 
-# ------------------------------------------------------------------ предобработка
 def test_sample_is_light_on_dark_and_gets_normalized():
     gray = cv2.cvtColor(SAMPLE, cv2.COLOR_BGR2GRAY)
     assert detect_inverted(gray) is True
     line = normalize_line(SAMPLE)
-    assert line.inverted and line.scale > 2          # символы 14 px -> увеличены до стандартной высоты
+    assert line.inverted and line.scale > 2          
     assert line.gray.shape == line.detail.shape == line.ink.shape
-    assert np.median(line.gray) > 200                 # после нормализации фон светлый, текст тёмный
+    assert np.median(line.gray) > 200                 
 
 
 @pytest.mark.parametrize("light_on_dark", [False, True])
@@ -44,7 +38,6 @@ def test_polarity_detection_on_synthetic(light_on_dark):
 
 
 def test_regression_dark_surround_does_not_hide_the_text():
-    """Тёмная кайма сцены вокруг пластины склеивается Otsu в одну «рамку» и раньше прятала текст."""
     plate = render_plate("09KG512ABC", PlateStyle(text_height=30))
     framed = cv2.copyMakeBorder(plate, 12, 12, 30, 30, cv2.BORDER_CONSTANT, value=(35, 35, 35))
     line, seg = segment(framed)
@@ -54,28 +47,27 @@ def test_regression_dark_surround_does_not_hide_the_text():
 def test_regression_text_height_uses_line_of_glyphs_not_tallest_blob():
     ink = np.zeros((120, 600), np.uint8)
     for i in range(10):
-        ink[40:80, 40 + i * 40:40 + i * 40 + 22] = 255       # строка из 10 символов высотой 40
-    ink[0:120, 560:590] = 255                                 # высокое пятно у края: не рамка, но выше символов
+        ink[40:80, 40 + i * 40:40 + i * 40 + 22] = 255       
+    ink[0:120, 560:590] = 255                                 
     height, band = estimate_text_height(ink)
     assert height == 40 and band == (40, 80)
 
 
 def test_frame_component_rules():
     shape = (60, 400)
-    assert is_frame_component(0, 0, 400, 60, shape)            # кольцо по всему кропу
-    assert is_frame_component(0, 2, 380, 4, shape)             # горизонтальная линия
-    assert is_frame_component(0, 0, 3, 60, shape)              # вертикальная планка у края
-    assert not is_frame_component(100, 15, 20, 30, shape)      # обычный символ
-    assert not is_frame_component(0, 15, 20, 45, shape)        # крайний символ у границы
+    assert is_frame_component(0, 0, 400, 60, shape)            
+    assert is_frame_component(0, 2, 380, 4, shape)             
+    assert is_frame_component(0, 0, 3, 60, shape)              
+    assert not is_frame_component(100, 15, 20, 30, shape)      
+    assert not is_frame_component(0, 15, 20, 45, shape)        
 
 
-# ------------------------------------------------------------------ сегментация
 def test_sample_splits_into_ten_even_slots_including_merged_AAA():
     _, seg = segment(SAMPLE)
     assert len(seg.slots) == 10 and seg.score > 0.9
     spans = [(s.x0, s.x1) for s in seg.slots]
-    assert all(a[1] <= b[0] + 1 for a, b in zip(spans, spans[1:]))     # слева направо без наложений
-    last = [s.x1 - s.x0 for s in seg.slots[-3:]]                       # «AAA» слиплись в один блок 36 px
+    assert all(a[1] <= b[0] + 1 for a, b in zip(spans, spans[1:]))     
+    last = [s.x1 - s.x0 for s in seg.slots[-3:]]                       
     assert max(last) - min(last) <= 0.2 * max(last)
 
 
@@ -117,16 +109,15 @@ def test_non_text_is_not_accepted_as_a_plate(name, image):
 
 
 @pytest.mark.parametrize("font", ["simplex", "duplex"])
-@pytest.mark.parametrize("text", ["01KG11", "01KG1111", "01KG111AA"])      # короче 10 символов: пустая позиция
+@pytest.mark.parametrize("text", ["01KG11", "01KG1111", "01KG111AA"])     
 def test_lines_shorter_than_ten_characters_are_rejected(text, font):
     _, seg = segment(render_plate(text, PlateStyle(font=font, text_height=30)))
     assert seg is None or seg.score < MIN_SCORE
 
 
 @pytest.mark.parametrize("font", ["simplex", "duplex"])
-@pytest.mark.parametrize("text", ["01KG111AAAB", "01KG111AAAB1", "01KG111AAA01KG11"])   # длиннее 10: две буквы в одной позиции
+@pytest.mark.parametrize("text", ["01KG111AAAB", "01KG111AAAB1", "01KG111AAA01KG11"])   
 def test_regression_lines_longer_than_ten_characters_are_rejected(text, font):
-    """Раньше такая строка резалась на 10 позиций с оценкой ~0.9 и могла дать правдоподобный чужой номер."""
     _, seg = segment(render_plate(text, PlateStyle(font=font, text_height=30)))
     assert seg is None or seg.score < MIN_SCORE
 
@@ -138,13 +129,12 @@ def test_exactly_ten_characters_are_accepted_with_high_score():
 
 def test_text_touching_the_crop_edge_scores_lower_than_a_complete_line():
     full = render_plate("03KG777KKK", PlateStyle(text_height=30, frame=False))
-    cut = full[:, : int(full.shape[1] * 0.78)]               # правый край обрезан
+    cut = full[:, : int(full.shape[1] * 0.78)]               
     _, seg_full = segment(full)
     _, seg_cut = segment(cut)
     assert seg_full is not None and (seg_cut is None or seg_cut.score < seg_full.score)
 
 
-# ------------------------------------------------------------------ поиск области в кадре
 def test_crop_vs_full_frame_detection():
     assert looks_like_crop(SAMPLE)
     assert not looks_like_crop(np.zeros((720, 1280, 3), np.uint8))
@@ -164,13 +154,11 @@ def test_plate_is_found_in_a_cluttered_scene(seed):
     assert best >= 0.8
 
 
-# ------------------------------------------------------------------ уверенность
 def test_confidence_when_model_agrees_with_constraint_is_its_own_confidence():
     assert combine_confidence("K", 0.61, "K", 1.0) == pytest.approx(0.61)
 
 
 def test_confidence_when_constraint_overrode_the_model_is_discounted():
-    # модель уверенно (0.9) сказала «O» в цифровой позиции; ограничение выбрало «0» — доверие низкое
     assert combine_confidence("O", 0.9, "0", 1.0) == pytest.approx(0.1)
     assert combine_confidence("O", 0.3, "0", 0.8) == pytest.approx(0.56)
 
@@ -179,10 +167,9 @@ def test_glyph_canvases_have_equal_height_and_minimum_aspect():
     _, seg = segment(SAMPLE)
     canvases = glyph_canvases(Segmentation(gray=seg.gray, slots=seg.slots, score=seg.score))
     assert len(canvases) == 10 and len({c.shape[0] for c in canvases}) == 1
-    assert all(c.shape[1] >= 0.85 * c.shape[0] for c in canvases)       # узкая «1» не превращается в полоску
+    assert all(c.shape[1] >= 0.85 * c.shape[0] for c in canvases)       
 
 
-# ------------------------------------------------------------------ с настоящей моделью
 @pytest.fixture(scope="module")
 def service():
     pytest.importorskip("easyocr")
@@ -192,7 +179,7 @@ def service():
     repo = OcrModelRepository()
     try:
         repo.get_reader()
-    except Exception as exc:  # нет сети для весов и т.п.
+    except Exception as exc:  
         pytest.skip(f"модель EasyOCR недоступна: {exc}")
     return RecognitionService(repo, OcrSettings())
 

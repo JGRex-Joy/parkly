@@ -18,7 +18,7 @@ def warp_quad(img: np.ndarray, box: np.ndarray) -> np.ndarray:
     tl, tr, br, bl = order_points(box)
     width = int(max(np.linalg.norm(br - bl), np.linalg.norm(tr - tl)))
     height = int(max(np.linalg.norm(tr - br), np.linalg.norm(tl - bl)))
-    if height > width:  # повёрнутый на 90°
+    if height > width:  
         width, height = height, width
     width, height = max(width, 1), max(height, 1)
     dst = np.array([[0, 0], [width - 1, 0], [width - 1, height - 1], [0, height - 1]], dtype="float32")

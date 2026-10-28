@@ -1,8 +1,3 @@
-"""Совместимость внешнего API со старой версией сервиса (0.2.0).
-
-Снимок OpenAPI снят с исходного кода до рефакторинга. Поведение эндпоинтов проверяется на настоящем
-GateService с подставными распознавателем, backend и камерой — так тестируются именно бизнес-правила.
-"""
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -48,7 +43,7 @@ class FakeBackend:
     def __init__(self, response=None, error=None):
         self.response, self.error, self.calls = response if response is not None else {"ok": True}, error, []
 
-    async def forward_plate(self, gate, plate):
+    async def forward_plate(self, gate, plate, correlation_id=None):
         self.calls.append((gate, plate))
         if self.error:
             raise self.error
@@ -84,7 +79,6 @@ def _clear_overrides():
 GOOD = PlateCandidate("01", "KG", "111", "AAA", 0)
 
 
-# ------------------------------------------------------------------ контракт OpenAPI
 def test_openapi_is_identical_to_pre_refactor_snapshot():
     snapshot = json.loads((FIXTURES / "openapi_v0.2.0.json").read_text(encoding="utf-8"))
     assert json.dumps(app.openapi(), sort_keys=True) == json.dumps(snapshot, sort_keys=True)
@@ -100,7 +94,6 @@ def test_app_entrypoint_and_metadata_unchanged():
     assert app.title == "Smart Parking - OCR Service (KG plates)" and app.version == "0.2.0"
 
 
-# ------------------------------------------------------------------ /health, /recognize
 def test_health():
     client, *_ = make_client(result_for(GOOD))
     r = client.get("/health")
@@ -147,7 +140,6 @@ def test_recognize_undecodable_image_is_400_with_original_message():
     assert r.status_code == 400 and r.json() == {"detail": "Не удалось декодировать изображение"}
 
 
-# ------------------------------------------------------------------ /gate-event/with-photo: правила доверия
 def post_photo(client, gate="entry"):
     return client.post(f"/gate-event/with-photo?gate={gate}", files={"file": ("p.png", png_bytes(), "image/png")})
 
@@ -207,7 +199,6 @@ def test_gate_rejects_invalid_gate_value():
     assert client.post("/gate-event/signal").status_code == 422
 
 
-# ------------------------------------------------------------------ /gate-event/signal и камера
 @pytest.mark.parametrize("source", ["webcam", "ip_camera", "fixture"])
 def test_signal_uses_camera_and_reports_frame_source(source):
     client, backend, camera = make_client(result_for(GOOD), camera=FakeCameraService(source))
@@ -231,7 +222,6 @@ def test_debug_snapshot_shape_and_failure():
     assert r.status_code == 503 and r.json() == {"detail": "Камера недоступна: нет кадра"}
 
 
-# ------------------------------------------------------------------ жизненный цикл приложения
 def test_lifespan_starts_and_stops_container(monkeypatch):
     events = []
     from app.services import container as container_module

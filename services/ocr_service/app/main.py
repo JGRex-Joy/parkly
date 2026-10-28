@@ -1,4 +1,3 @@
-"""Точка входа: `uvicorn app.main:app`."""
 from __future__ import annotations
 
 import logging
@@ -21,13 +20,13 @@ async def lifespan(app: FastAPI):
     try:
         yield
     finally:
-        container.stop()  # останавливает потоки камер и освобождает устройства
+        container.stop()  
 
 
 def create_app() -> FastAPI:
     application = FastAPI(
-        title="Smart Parking - OCR Service",
-        description="Распознавание автомобильных номеров через OpenCV + EasyOCR.",
+        title="Smart Parking - OCR Service (KG plates)",
+        description="Распознавание кыргызских автомобильных номеров через OpenCV + EasyOCR.",
         version="0.2.0",
         lifespan=lifespan,
     )

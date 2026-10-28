@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Dict, Optional
 
-from app.cameras.base import CameraSource, CameraTimeoutError, CameraUnavailableError
+from app.cameras.base import CameraBlackFrameError, CameraSource, CameraTimeoutError, CameraUnavailableError
 from app.cameras.ip_camera import IpCameraSource
 from app.cameras.usb_camera import UsbCameraSource
 from app.config import Settings
@@ -15,7 +15,10 @@ logger = logging.getLogger("ocr_service.cameras")
 def build_sources(settings: Settings) -> Dict[str, CameraSource]:
     sources: Dict[str, CameraSource] = {}
     if settings.usb_camera.enabled:
-        sources["usb"] = UsbCameraSource(settings.usb_camera)
+        sources["usb"] = UsbCameraSource(settings.usb_camera, name="usb")
+    if settings.wifi_camera.enabled:
+        # Iriun по Wi-Fi тоже виден системе как локальная камера (виртуальное устройство) — открываем по индексу.
+        sources["wifi"] = UsbCameraSource(settings.wifi_camera, name="wifi")
     if settings.ip_camera.enabled:
         sources["ip"] = IpCameraSource(settings.ip_camera)
     return sources
@@ -49,5 +52,7 @@ class CameraManager:
             return source.get_frame(newer_than=newer_than)
         except CameraUnavailableError as exc:
             raise CameraUnavailableError(f"Камера для '{gate}' недоступна: {exc}") from exc
+        except CameraBlackFrameError as exc:
+            raise CameraBlackFrameError(f"Не удалось получить кадр с камеры '{gate}': {exc}") from exc
         except CameraTimeoutError as exc:
             raise CameraTimeoutError(f"Не удалось получить кадр с камеры '{gate}': {exc}") from exc

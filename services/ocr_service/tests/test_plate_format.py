@@ -26,8 +26,8 @@ def test_matches_format(plate, ok):
 def test_candidate_output_matches_legacy_contract():
     cand = build_candidate(list("01KG111AAA"), 0, "KG")
     assert cand == PlateCandidate("01", "KG", "111", "AAA", 0)
-    assert cand.plate_number == "01111AAA"       # как раньше: без пробелов и без KG
-    assert cand.formatted == "01 KG 111 AAA"     # то, что получает backend
+    assert cand.plate_number == "01111AAA"       
+    assert cand.formatted == "01 KG 111 AAA"     
     assert cand.is_valid_region
 
 
@@ -48,7 +48,7 @@ def test_country_code_tolerates_one_misread_letter_and_counts_it():
     assert match_country("KG", "KG") == ("KG", 0)
     assert match_country("KC", "KG") == ("KG", 1)
     assert match_country("XY", "KG") is None
-    assert match_country("XY", "") == ("XY", 0)   # проверка страны отключена
+    assert match_country("XY", "") == ("XY", 0)   
     cand = build_candidate(list("01KC111AAA"), 1, "KG")
     assert cand.country == "KG" and cand.corrections == 2
     assert build_candidate(list("01XY111AAA"), 0, "KG") is None
@@ -63,7 +63,7 @@ def test_country_code_tolerates_one_misread_letter_and_counts_it():
     ("01K6111AAA", "01 KG 111 AAA", 1),
     ("O1KG1I1AAA", "01 KG 111 AAA", 2),
     ("xx01KG111AAAyy", "01 KG 111 AAA", 0),
-    ("01111AAA", "01 KG 111 AAA", 0),       # страна не прочиталась — достраиваем
+    ("01111AAA", "01 KG 111 AAA", 0),       
 ])
 def test_parse_text_recovers_plate(raw, formatted, corrections):
     cand = parse_text(raw, "KG")

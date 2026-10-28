@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Optional
 
 import httpx
 
@@ -11,8 +12,7 @@ from app.services.recognition_service import RecognitionService
 
 
 class BackendUnavailableError(RuntimeError):
-    """Backend парковки недоступен (сеть/таймаут). Роутер превращает это в HTTP 502."""
-
+    pass
 
 class GateService:
     def __init__(self, recognition: RecognitionService, backend: BackendRepository, max_corrections: int) -> None:
@@ -24,7 +24,9 @@ class GateService:
         result = await asyncio.to_thread(self._recognition.recognize, image_bytes)
         return to_recognize_response(result)
 
-    async def process_gate_event(self, gate: Gate, image_bytes: bytes, frame_source: str) -> GateEventResponse:
+    async def process_gate_event(
+        self, gate: Gate, image_bytes: bytes, frame_source: str, correlation_id: Optional[str] = None
+    ) -> GateEventResponse:
         recognized = await self.recognize(image_bytes)
 
         if not recognized.plate_number:
@@ -41,7 +43,7 @@ class GateService:
                                      frame_source=frame_source)
 
         try:
-            backend_response = await self._backend.forward_plate(gate, recognized.formatted)
+            backend_response = await self._backend.forward_plate(gate, recognized.formatted, correlation_id)
         except httpx.HTTPStatusError as e:
             return GateEventResponse(
                 recognized=recognized, forwarded_to_backend=False,
