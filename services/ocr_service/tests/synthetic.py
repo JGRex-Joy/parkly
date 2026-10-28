@@ -1,8 +1,3 @@
-"""Генератор синтетических номеров формата DD LL DDD LLL для тестов и оценки качества OCR.
-
-По умолчанию рисует шрифтами Hershey из OpenCV (никаких внешних файлов). Для оценки на
-реалистичных шрифтах можно передать путь к .ttf (нужен Pillow, он уже есть среди зависимостей EasyOCR).
-"""
 from __future__ import annotations
 
 import string
@@ -29,19 +24,18 @@ def random_plate(rng: np.random.Generator, country: str = "KG") -> str:
 
 @dataclass
 class PlateStyle:
-    font: str = "simplex"            # ключ HERSHEY или путь к .ttf
-    text_height: int = 28            # высота заглавных букв, px
-    pitch: float = 1.0               # шаг между символами относительно ширины ячейки (<0.85 — слипание)
-    light_on_dark: bool = False      # как в присланном образце
-    margin_x: float = 0.9            # поля в высотах текста
+    font: str = "simplex"            
+    text_height: int = 28            
+    pitch: float = 1.0               
+    light_on_dark: bool = False      
+    margin_x: float = 0.9            
     margin_y: float = 0.55
-    frame: bool = True               # рамка пластины
+    frame: bool = True               
     fg: Optional[int] = None
     bg: Optional[int] = None
 
 
 def _glyph_cv(ch: str, font_key: str, height: int) -> Tuple[np.ndarray, int]:
-    """Маска глифа заданной высоты (255 = чернила) и его ширина."""
     font = HERSHEY[font_key]
     scale = 1.0
     (_, h), _ = cv2.getTextSize("H", font, scale, 1)
@@ -54,7 +48,6 @@ def _glyph_cv(ch: str, font_key: str, height: int) -> Tuple[np.ndarray, int]:
 
 
 def _glyph_ttf(ch: str, path: str, height: int) -> Tuple[np.ndarray, int]:
-    """Маска глифа: верх заглавной буквы в строке 2, высота заглавных ровно `height`, снизу запас под хвосты."""
     from PIL import Image, ImageDraw, ImageFont
 
     probe = ImageFont.truetype(path, 100)
@@ -69,7 +62,6 @@ def _glyph_ttf(ch: str, path: str, height: int) -> Tuple[np.ndarray, int]:
 
 
 def render_plate(text: str, style: PlateStyle = PlateStyle()) -> np.ndarray:
-    """Горизонтальная пластина с текстом (BGR)."""
     h = style.text_height
     glyph_fn = _glyph_ttf if style.font.endswith((".ttf", ".otf")) else _glyph_cv
     glyphs = [glyph_fn(ch, style.font, h) for ch in text]
@@ -100,22 +92,18 @@ def render_plate(text: str, style: PlateStyle = PlateStyle()) -> np.ndarray:
     return cv2.cvtColor(out, cv2.COLOR_GRAY2BGR)
 
 
-# ------------------------------------------------------------------ искажения
 def degrade(img: np.ndarray, rng: np.random.Generator, level: float = 1.0) -> np.ndarray:
-    """level 0 — без искажений, 1 — типичный кадр с телефона, 2 — тяжёлый случай."""
     out = img.astype(np.float32)
     h, w = out.shape[:2]
     if level <= 0:
         return img.copy()
 
-    # неравномерная засветка / тень
     ramp = np.linspace(1.0 - 0.28 * level * rng.random(), 1.0, w, dtype=np.float32)
     if rng.random() < 0.5:
         ramp = ramp[::-1]
     out *= ramp[None, :, None]
     out = (out - 128) * (1 - 0.25 * level * rng.random()) + 128 + rng.uniform(-18, 18) * level
 
-    # потеря разрешения: далёкая съёмка
     k = 1.0 - 0.35 * level * rng.random()
     if k < 0.98:
         small = cv2.resize(out, None, fx=k, fy=k, interpolation=cv2.INTER_AREA)
@@ -141,7 +129,6 @@ def make_scene(
     plate: np.ndarray, rng: np.random.Generator, size: Tuple[int, int] = (1280, 720),
     plate_width: Optional[int] = None, tilt: float = 0.0, perspective: float = 0.0,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Вставляет пластину в «кадр с камеры» (кузов, бампер, шум). Возвращает (кадр, 4 угла пластины)."""
     W, H = size
     base = rng.integers(60, 170)
     scene = np.full((H, W, 3), base, np.float32)
@@ -168,7 +155,6 @@ def make_scene(
     oy = int(rng.integers(40, max(41, H - ph - 40)))
     dst = dst + [ox, oy]
     m = cv2.getPerspectiveTransform(quad, dst.astype(np.float32))
-    # BORDER_TRANSPARENT оставляет часть dst неинициализированной (случайный мусор) — не используем его
     warped = cv2.warpPerspective(plate, m, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
     mask = cv2.warpPerspective(np.full((ph, pw), 255, np.uint8), m, (W, H), flags=cv2.INTER_LINEAR)
     scene = np.where(mask[..., None] > 127, warped, scene)

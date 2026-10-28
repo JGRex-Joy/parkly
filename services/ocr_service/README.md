@@ -13,14 +13,24 @@ EasyOCR model, fixture frames · `services/` recognition pipeline, gate rules, c
 Unchanged from 0.2.0: `POST /recognize`, `POST /gate-event/signal`, `POST /gate-event/with-photo`,
 `GET /debug/camera-snapshot`, `GET /health` — same URLs, parameters, schemas, status codes and messages.
 `tests/test_api_compat.py` compares the generated OpenAPI with a snapshot taken from the original code.
-Only addition in values: `frame_source` is `"ip_camera"` for the IP source (USB still reports `"webcam"`).
+Only addition in values: `frame_source` is `"ip_camera"` for the IP source (both Iriun cameras, USB and Wi-Fi, report `"webcam"`).
 `plate_number` stays without the country code (`01111AAA`); `formatted` stays `01 KG 111 AAA`.
 
 ## Cameras
-Two independent sources, each with its own settings, bound to gates by `CAMERA_ENTRY_SOURCE` / `CAMERA_EXIT_SOURCE` (`usb`|`ip`).
-- **IP (phone on the LAN):** `CAMERA_IP_URL` (e.g. Android IP Webcam `http://<ip>:8080/video`, or `rtsp://...`), open/read timeouts.
-- **USB (phone seen as a camera):** `CAMERA_USB_INDEX` (number or `auto`), backend, resolution, FOURCC.
-Find devices with `python scripts/find_cameras.py [--ip URL] [--save dir]`.
+Independent sources, each with its own settings, bound to gates by `CAMERA_ENTRY_SOURCE` / `CAMERA_EXIT_SOURCE` (`usb`|`wifi`|`ip`, defaults `usb` / `wifi`).
+- **`usb` — phone over USB via Iriun Webcam:** a *local video device*, `CAMERA_USB_INDEX` (default `2`, or `auto`).
+- **`wifi` — phone over Wi-Fi via Iriun Webcam:** also a *local video device* (Iriun creates a virtual camera on the laptop), `CAMERA_WIFI_INDEX` (default `3`). It is **not** an IP URL.
+- **`ip` — real network stream** (Android IP Webcam `http://<ip>:8080/video`, `rtsp://...`): `CAMERA_IP_URL`, open/read timeouts. Not used for Iriun.
+Both local sources share the same options (`CAMERA_USB_*` / `CAMERA_WIFI_*`): index, backend chain, resolution, FOURCC, open timeout.
+Find indexes with `python scripts/find_cameras.py --save snapshots` (open the snapshots to see which phone is which; swap the two indexes if needed).
+
+**Black frames.** Virtual cameras hand out black frames while the phone app is starting or when the wrong backend is used. A frame is
+black when its mean brightness *and* 99.5th percentile are below `CAMERA_BLACK_MEAN_THRESHOLD` / `CAMERA_BLACK_PEAK_THRESHOLD`.
+Black frames are never published as a capture: on open, the source waits up to `*_OPEN_TIMEOUT` s for the first real frame and
+otherwise tries the next backend (`auto`: Windows `dshow → msmf → any`, Linux `v4l2 → any`); while running, black frames do not refresh
+the stream, so after `*_STALL_TIMEOUT` s the device is reopened. A request that only sees black frames fails with HTTP 503
+("камера … отдаёт только чёрные/пустые кадры") instead of returning an empty image, and the fixture fallback is *not* used for it.
+Device opening is serialized across cameras (DirectShow/MSMF are not safe to open concurrently), and `auto` index scan never hands the same device to two sources.
 
 Each source runs a reader thread that keeps the stream drained (no stale buffered frames), reconnects with exponential backoff,
 treats `*_STALL_TIMEOUT` seconds without frames as a dead stream, drops the cached frame on disconnect, and releases the device

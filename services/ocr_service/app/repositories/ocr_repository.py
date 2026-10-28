@@ -25,13 +25,11 @@ class OcrModelRepository:
         return self._reader
 
     def preload_in_background(self) -> threading.Thread:
-        """Греет модель, чтобы первый запрос с ворот не ждал загрузку. Ошибка не валит сервис."""
-
         def _load() -> None:
             try:
                 self.get_reader()
                 logger.info("Модель EasyOCR готова")
-            except Exception:  # noqa: BLE001
+            except Exception:  
                 logger.exception("Не удалось заранее загрузить модель EasyOCR; будет загружена при первом запросе")
 
         thread = threading.Thread(target=_load, name="ocr-preload", daemon=True)

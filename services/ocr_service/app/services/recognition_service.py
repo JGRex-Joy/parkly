@@ -20,13 +20,12 @@ from app.utils.image import decode_image
 
 logger = logging.getLogger("ocr_service.recognition")
 
-MAX_READ_ATTEMPTS = 2        # сколько лучших кандидатов читаем, прежде чем сдаться
+MAX_READ_ATTEMPTS = 2        
 MIN_OCR_WIDTH = 440
 PLATE_ALLOWLIST = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 def _prep_for_line_ocr(plate_img: np.ndarray) -> np.ndarray:
-    """Подготовка для чтения строки целиком (запасной путь), как в прежней версии."""
     h, w = plate_img.shape[:2]
     if w < MIN_OCR_WIDTH:
         scale = MIN_OCR_WIDTH / w
@@ -38,7 +37,6 @@ def _prep_for_line_ocr(plate_img: np.ndarray) -> np.ndarray:
 
 
 def slot_detections(readings: List[SlotReading]) -> List[Detection]:
-    """«Сырые» чтения модели (без ограничений формата) по полям: регион, страна, серийник, серия."""
     detections: List[Detection] = []
     for start, end in (REGION, COUNTRY, SERIAL, SERIES):
         group = readings[start:end]
@@ -54,7 +52,6 @@ class RecognitionService:
         self._settings = settings
         self._glyphs = GlyphRecognizer(model)
 
-    # ------------------------------------------------------------------ публичный API
     def recognize(self, image_bytes: bytes) -> RecognitionResult:
         frame = decode_image(image_bytes)
         crops = find_plate_candidates(frame)
@@ -73,7 +70,6 @@ class RecognitionService:
             return fallback
         return best_failed
 
-    # ------------------------------------------------------------------ внутренние шаги
     def _segment_candidates(self, crops: List[PlateCrop]) -> List[Tuple[PlateCrop, Segmentation]]:
         scored: List[Tuple[PlateCrop, Segmentation]] = []
         for crop in crops:
@@ -100,7 +96,6 @@ class RecognitionService:
         return RecognitionResult(candidate, confidence, detections, reported, tuple(readings))
 
     def _read_whole_line(self, crop: PlateCrop) -> RecognitionResult:
-        """Запасной путь: EasyOCR читает строку целиком, формат применяется к тексту."""
         line = normalize_line(crop.image)
         prepared = _prep_for_line_ocr(line.gray if line is not None else crop.image)
         reader = self._model.get_reader()

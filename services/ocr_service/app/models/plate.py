@@ -1,4 +1,3 @@
-"""Доменные объекты распознавания номера."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -11,11 +10,11 @@ VALID_REGION_CODES = frozenset(f"{i:02d}" for i in range(1, 12))  # 01..11
 
 @dataclass(frozen=True)
 class PlateCandidate:
-    region: str          # "01"
-    country: str         # "KG"
-    serial: str          # "111"
-    letters: str         # "AAA"
-    corrections: int     # сколько символов пришлось исправить по требованиям формата
+    region: str          
+    country: str         
+    serial: str          
+    letters: str         
+    corrections: int     
 
     @property
     def plate_number(self) -> str:
@@ -40,35 +39,35 @@ class Detection:
 
 @dataclass
 class PlateCrop:
-    image: np.ndarray                  # BGR, выпрямленная пластина (ширина > высота)
-    method: str                        # каким способом найдена
-    score: float                       # уверенность локализации 0..1
-    box: Optional[np.ndarray] = None   # 4 точки в координатах исходного кадра
+    image: np.ndarray                  
+    method: str                        
+    score: float                       
+    box: Optional[np.ndarray] = None   
 
 
 @dataclass
 class GlyphSlot:
     index: int
     x0: int
-    x1: int          # исключая
+    x1: int          
     y0: int
-    y1: int          # исключая
+    y1: int          
 
 
 @dataclass
 class Segmentation:
-    gray: np.ndarray                   # нормализованное изображение: тёмный текст на светлом фоне, uint8
+    gray: np.ndarray                   
     slots: List[GlyphSlot]
-    score: float                       # 0..1, насколько разбиение похоже на строку номера
+    score: float                       
 
 
 @dataclass
 class SlotReading:
     index: int
-    char: str                # символ после ограничения по формату
+    char: str                
     confidence: float
-    raw_char: str            # что модель прочитала без ограничений
-    corrected: bool          # ограничение формата изменило символ
+    raw_char: str            
+    corrected: bool          
 
 
 @dataclass

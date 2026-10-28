@@ -66,7 +66,7 @@ def main() -> int:
 
     rows = collections.defaultdict(lambda: collections.Counter())
     confusions = collections.Counter()
-    slot_conf = []  # (min slot confidence, верно ли) для подбора OCR_MIN_SLOT_CONFIDENCE
+    slot_conf = []  
     started = time.time()
     for group, truth, img in samples:
         result = service.recognize(cv2.imencode(".png", img)[1].tobytes())

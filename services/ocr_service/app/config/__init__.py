@@ -1,6 +1,7 @@
 from app.config.settings import (
     CameraReliability,
     IpCameraSettings,
+    LocalCameraSettings,
     OcrSettings,
     Settings,
     UsbCameraSettings,
@@ -11,6 +12,7 @@ from app.config.settings import (
 __all__ = [
     "CameraReliability",
     "IpCameraSettings",
+    "LocalCameraSettings",
     "OcrSettings",
     "Settings",
     "UsbCameraSettings",

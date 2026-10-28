@@ -8,20 +8,20 @@ import numpy as np
 
 from app.utils.image import to_gray
 
-TARGET_TEXT_HEIGHT = 40     # высота заглавных букв после масштабирования, px
+TARGET_TEXT_HEIGHT = 40     
 MAX_UPSCALE = 6.0
-MIN_TEXT_HEIGHT = 6         # меньше — информации в символах уже нет
+MIN_TEXT_HEIGHT = 6         
 
 
 @dataclass
 class NormalizedLine:
-    gray: np.ndarray        # uint8, тёмный текст на светлом фоне, фон выровнен, слегка сглажен (для сегментации)
-    detail: np.ndarray      # то же без сглаживания: тонкие штрихи (перекладина «G») сохранены — для чтения
-    ink: np.ndarray         # uint8, 255 = чернила, после бинаризации
-    text_height: float      # высота символов в px уже в масштабе `gray`
-    band: Tuple[int, int]   # [y0, y1) строка символов
-    inverted: bool          # исходник был «светлый на тёмном»
-    scale: float            # во сколько раз увеличили исходник
+    gray: np.ndarray        
+    detail: np.ndarray      
+    ink: np.ndarray         
+    text_height: float      
+    band: Tuple[int, int]   
+    inverted: bool          
+    scale: float            
 
 
 def detect_inverted(gray: np.ndarray) -> bool:
@@ -32,7 +32,7 @@ def detect_inverted(gray: np.ndarray) -> bool:
     window = gray[y0:y1, x0:x1]
     bright_fraction = float(np.mean(window > thr))
     if abs(bright_fraction - 0.5) > 0.08:
-        return bright_fraction < 0.5          # текст — меньшинство; если меньшинство яркое — инверсия
+        return bright_fraction < 0.5          
 
     ring = np.concatenate([gray[0, :], gray[-1, :], gray[:, 0], gray[:, -1]])
     return float(np.median(ring)) < thr
@@ -40,7 +40,7 @@ def detect_inverted(gray: np.ndarray) -> bool:
 
 def _components(ink: np.ndarray):
     n, _, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
-    return stats[1:]  # без фона: x, y, w, h, area
+    return stats[1:]  
 
 
 def is_frame_component(x: int, y: int, w: int, h: int, shape: Tuple[int, int]) -> bool:
@@ -58,7 +58,7 @@ def _drop_frame_components(stats: np.ndarray, shape: Tuple[int, int]) -> np.ndar
     return np.array(keep, dtype=np.int32).reshape(-1, 5)
 
 
-MIN_LINE_COMPONENTS = 4     # столько компонентов одной высоты на одной базовой линии — уже строка текста
+MIN_LINE_COMPONENTS = 4     
 
 
 def estimate_text_height(ink: np.ndarray) -> Optional[Tuple[float, Tuple[int, int]]]:

@@ -8,6 +8,7 @@ import numpy as np
 
 class CameraKind(str, enum.Enum):
     USB = "usb"
+    WIFI = "wifi"
     IP = "ip"
 
 
@@ -20,6 +21,6 @@ class ConnectionState(str, enum.Enum):
 
 @dataclass(frozen=True)
 class CapturedFrame:
-    image: np.ndarray       # BGR
-    captured_at: float      # time.monotonic()
-    source: str             # значение поля frame_source в API
+    image: np.ndarray       
+    captured_at: float      
+    source: str             
