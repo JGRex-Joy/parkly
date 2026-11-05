@@ -29,6 +29,7 @@ To maintain a clean and readable project history, we follow the **Conventional C
 * `ocr` — License plate recognition service
 * `bridge` — PySerial hardware gateway (Arduino ↔ Backend)
 * `arduino` — Arduino C++ firmware sketches, 3D models and breadboard schematics
+* `web` — 3D visualization & CRM service
 * `docs` — Project documentation
 * `github` —`.github` workflows, templates, and configurations
 
