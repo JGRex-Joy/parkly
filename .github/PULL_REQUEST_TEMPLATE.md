@@ -7,6 +7,7 @@ Closes #<!-- Issue number, e.g., Closes #12 -->
 - [ ] Hardware / Arduino / TinkerCAD
 - [ ] Serial Bridge (PySerial)
 - [ ] Backend Service
+- [ ] WEB Admin Service
 - [ ] Mobile App (React Native)
 - [ ] OCR Service
 - [ ] Documentation / System Architecture
@@ -14,6 +15,7 @@ Closes #<!-- Issue number, e.g., Closes #12 -->
 ## Testing Checklist
 - [ ] Tested on physical hardware / TinkerCAD simulation
 - [ ] Verified local API / WebSocket integration
+- [ ] Tested 3D animations / CRM
 - [ ] Tested Mobile UI on device / emulator
 - [ ] Serial communication logs verified
 
