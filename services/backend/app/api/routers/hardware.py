@@ -4,13 +4,11 @@ from fastapi import APIRouter, Depends
 
 from app import schemas
 from app.api.dependencies import get_hardware_service
-from app.api.security import require_service_token
 from app.services.hardware import HardwareService
 
 router = APIRouter(
     prefix="/api/hardware",
     tags=["Оборудование (bridge)"],
-    dependencies=[Depends(require_service_token)],
 )
 
 

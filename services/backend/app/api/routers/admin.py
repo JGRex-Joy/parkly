@@ -6,11 +6,10 @@ from fastapi import APIRouter, Depends
 
 from app import schemas
 from app.api.dependencies import get_hardware_service, get_repositories
-from app.api.security import require_admin_token
 from app.repositories import Repositories
 from app.services.hardware import HardwareService
 
-router = APIRouter(prefix="/api/admin", tags=["Оператор"], dependencies=[Depends(require_admin_token)])
+router = APIRouter(prefix="/api/admin", tags=["Оператор"])
 
 
 @router.post("/sessions/{session_id}/exit-override", response_model=schemas.SessionOut,

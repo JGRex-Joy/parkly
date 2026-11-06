@@ -1,14 +1,24 @@
-# Smart Parking backend
+# Smart Parking backend (demo build)
 
-Run: `uvicorn app.main:app` · Tests: `pytest`
+## Run (no .env, no keys, no auth)
+```bash
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+Open http://localhost:8000/docs. Tests: `pytest`.
 
-## Environment variables (all optional)
-| Variable | Default |
-|---|---|
-| `PARKING_BASE_URL` | `10.46.227.79:8000` (host used in QR/pay links) |
-| `PARKING_DATABASE_URL` | `sqlite:///./smart_parking.db` |
-| `PARKING_PENDING_ENTRY_TTL_SECONDS` | `900` - how long an admitted-but-not-parked vehicle reserves capacity |
-| `PARKING_CORS_ORIGINS` | empty = no CORS middleware; comma-separated origins to enable |
+* **Payments are mocked** (`app/services/mock_payment.py`): `POST /api/pay/{session_id}` (or the
+  "Pay now" button on the QR page `/pay/{id}`) marks the bill paid immediately. No gateway, webhook or secret.
+* **No authentication**: `X-Service-Token` / `X-Admin-Token` checks are removed; every endpoint,
+  including `/api/admin/*` and `/api/hardware/*`, is open. CORS allows any origin. Demo only.
+* **QR links** use the machine's LAN IP automatically (phones on the same Wi-Fi can open them).
+  Set `BASE_URL` in `app/core/config.py` if detection picks the wrong interface.
+
+## Настройки
+Переменные окружения и `.env` не используются. Все настройки (порт, адрес для QR, валюта, БД, места)
+лежат вверху файла `app/core/config.py` - правьте значения прямо там.
+Если QR ведёт не на тот адрес, впишите `BASE_URL = "http://<ваш-IP>:8000"`.
 
 ## Parking rules: four shared spaces (P1-P4)
 * No dedicated staff or customer spaces. Any vehicle may take any free space; the vehicle
@@ -48,7 +58,7 @@ active-session state in memory (rebuilt from the DB on startup), so late joiners
 | REST (`/api/v1`, `X-Service-Token` if configured) | Broadcast |
 |---|---|
 | `POST /entry {plate}` | `{"event":"ENTRY_OCR","plate"}` |
-| `POST /slots/update {slot_id, occupied, plate}` | `SLOT_OCCUPIED {slot_id, plate}` / `SLOT_RELEASED {slot_id}` |
+| `POST /slots/update {slot_id, occupied, plate}` | `SLOT_OCCUPIED {slot_id, plate}` / `SLOT_RELEASED {slot_id}` (only for an orphan slot with no session; see State locking) |
 | `POST /exit {plate}` | `EXIT_OCR {slot_id, plate, duration "HH:MM:SS", fee}` (+ `PAYMENT_CONFIRMED` for free stays / staff) |
 | `POST /payment/confirm {plate}` | `PAYMENT_CONFIRMED {plate}` (simulated payment mode only; real providers confirm via webhook, which broadcasts too) |
 | `GET /sessions` | session history for the CRM |
@@ -59,3 +69,14 @@ The legacy `/api/sim/*`, hardware and webhook flows emit the same events from th
 A plate whose previous visit is finished (`PAID`/`COMPLETED`) can enter again. Only unfinished sessions
 (`ENTERED`, `PARKED`, `AWAITING_PAYMENT`, open `EMPLOYEE_PASS`) block entry. A `PAID` session whose barrier
 confirmation never arrived is closed (`COMPLETED`, audit `exit_assumed_on_reentry`) when the plate enters again.
+
+
+## Slot state locking (sensor jitter protection)
+
+* While a session holds a slot (`slot_id` set, `slot_released_at IS NULL`, i.e. PARKED / AWAITING_PAYMENT / staff),
+  sensor `FREE` readings are dropped: no DB change, no `SLOT_RELEASED` broadcast. The API answers
+  `200` with `detail: "FREE ignored ..."`.
+* Repeated sensor `OCCUPIED` readings for the already-locked slot are idempotent (no 409, no duplicate `SLOT_OCCUPIED`).
+* The slot is released only by the formal exit workflow: `EXIT_OCR` -> `PAYMENT_CONFIRMED`
+  (or staff departure / operator override).
+* The dashboard `ConnectionManager` additionally refuses to apply/broadcast a `SLOT_RELEASED` for a slot that still has a plate.

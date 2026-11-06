@@ -15,8 +15,6 @@ class DisplayPublisher(Protocol):
 
 
 class WebSocketPublisher:
-    """Routes outbox messages: ``entry``/``exit`` -> gate displays, ``parking`` -> dashboard."""
-
     def __init__(
         self, manager: ConnectionManager, dashboard: Optional[DashboardManager] = None
     ) -> None:

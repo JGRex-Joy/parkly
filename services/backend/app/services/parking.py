@@ -22,7 +22,7 @@ from app.services.allocation import LotOccupancy
 from app.services.billing import BillingCalculator
 from app.services.display import DisplayPayloadBuilder
 from app.services import parking_events as ev
-from app.services.payment_providers import PaymentProvider, SimulatedProvider
+from app.services.mock_payment import MockPaymentProvider
 from app.services.state_machine import transition
 from app.services.unit_of_work import Outbox, UnitOfWork
 from app.utils import is_plausible_plate, normalize_plate, utcnow
@@ -72,7 +72,7 @@ class ParkingService:
         billing: Optional[BillingCalculator] = None,
         clock: Callable[[], datetime] = utcnow,
         policy: Optional[ServicePolicy] = None,
-        provider: Optional[PaymentProvider] = None,
+        provider: Optional[MockPaymentProvider] = None,
         rejections: Optional[RejectionAudit] = None,
     ) -> None:
         self._repos = repos
@@ -82,7 +82,7 @@ class ParkingService:
         self._billing = billing or BillingCalculator()
         self._clock = clock
         self._policy = policy or ServicePolicy()
-        self._provider = provider or SimulatedProvider()
+        self._provider = provider or MockPaymentProvider()
         self._rejections = rejections
 
     def list_slots(self) -> list[Slot]:
@@ -98,9 +98,6 @@ class ParkingService:
             with self._uow.transaction() as outbox:
                 now = self._clock()
                 is_staff = self._repos.employees.is_staff_plate(plate)
-
-                # 409 fix: a PAID session is a finished visit (the car left after paying). It must never
-                # block the plate, so close it here and let the vehicle enter again.
                 self._complete_paid_leftovers(plate, now)
                 existing = self._repos.sessions.find_active_for_plate(plate)
                 if existing is not None:
@@ -201,28 +198,40 @@ class ParkingService:
                          plate=normalize_plate(plate_number) if plate_number else None)
             raise
 
-    def release_slot(self, slot_id: int) -> Slot:
+    def report_slot_occupied(self, slot_id: int, plate_number: Optional[str] = None) -> ParkingSession:
+        slot = self._require_slot(slot_id)
+        if slot.status == SlotStatus.PARKED:
+            holder = self._repos.sessions.find_slot_holder(slot.id)
+            plate = normalize_plate(plate_number) if plate_number else None
+            if holder is not None and (plate is None or plate == holder.plate_number):
+                logger.info("slot %s: duplicate OCCUPIED ignored (locked by session %s)",
+                            slot.slot_number, holder.id)
+                return holder
+        return self.occupy_slot(slot_id, plate_number)
+
+    def report_slot_free(self, slot_id: int) -> tuple[Slot, bool]:
         with self._uow.transaction() as outbox:
             slot = self._repos.slots.get(slot_id)
             if slot is None:
                 raise NotFoundError("Слот не найден")
             holder = self._repos.sessions.find_slot_holder(slot.id)
-            was_occupied = slot.status == SlotStatus.PARKED
+            if holder is not None:
+                logger.info("slot %s: spurious FREE ignored (locked by session %s, status %s)",
+                            slot.slot_number, holder.id, holder.status.value)
+                return slot, False
+            if slot.status != SlotStatus.PARKED:
+                return slot, False 
             self._repos.slots.mark_free(slot)
-            if holder:
-                holder.slot_released_at = self._clock()
-                self._repos.sessions.flush()
             self._repos.audit.add(
-                "slot_vacated",
-                slot_id=slot.id,
-                session_id=holder.id if holder else None,
-                plate_number=holder.plate_number if holder else None,
-                slot=slot.slot_number,
-                was_occupied=was_occupied,
-                had_holder=holder is not None,
+                "slot_vacated", slot_id=slot.id, slot=slot.slot_number,
+                was_occupied=True, had_holder=False,
             )
             outbox.add("entry", self._displays.entry_status())
             outbox.add(ev.CHANNEL, ev.slot_released(slot.id))
+        return slot, True
+
+    def release_slot(self, slot_id: int) -> Slot:
+        slot, _ = self.report_slot_free(slot_id)
         return slot
 
     def register_exit(self, plate_number: str) -> ParkingSession:

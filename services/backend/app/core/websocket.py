@@ -48,21 +48,23 @@ class ConnectionManager:
         self.configure_slots(self.slot_plates.keys())
         self.sessions.clear()
 
-    def apply(self, msg: dict) -> None:
-        """Fold one pipeline event into the in-memory state (event loop thread only)."""
+    def apply(self, msg: dict) -> bool:
         kind, plate, slot_id = msg.get("event"), msg.get("plate"), msg.get("slot_id")
         if kind == "ENTRY_OCR" and plate:
             self.sessions[plate] = {"plate": plate, "phase": ENTERING, "slot_id": None,
                                     "duration": None, "fee": None}
         elif kind == "SLOT_OCCUPIED" and plate and slot_id is not None:
+            if (self.slot_plates.get(slot_id) == plate
+                    and self.sessions.get(plate, {}).get("phase") == PARKED):
+                return False  
             self.slot_plates[slot_id] = plate
             s = self.sessions.setdefault(plate, {"plate": plate, "duration": None, "fee": None})
             s.update(phase=PARKED, slot_id=slot_id)
         elif kind == "SLOT_RELEASED" and slot_id is not None:
             gone = self.slot_plates.get(slot_id)
+            if gone:
+                return False  
             self.slot_plates[slot_id] = None
-            if gone and self.sessions.get(gone, {}).get("phase") == PARKED:
-                self.sessions.pop(gone, None)
         elif kind == "EXIT_OCR" and plate:
             if slot_id is not None and self.slot_plates.get(slot_id) in (plate, None, ""):
                 self.slot_plates[slot_id] = None
@@ -70,9 +72,11 @@ class ConnectionManager:
             s.update(phase=EXITING, slot_id=slot_id, duration=msg.get("duration"), fee=msg.get("fee"))
         elif kind == "PAYMENT_CONFIRMED" and plate:
             self.sessions.pop(plate, None)
+        return True
 
     async def publish_event(self, msg: dict) -> None:
-        self.apply(msg)
+        if not self.apply(msg):
+            return
         await self.broadcast(msg)
 
     def snapshot(self) -> dict:

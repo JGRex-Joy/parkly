@@ -19,12 +19,27 @@ from app.services.unit_of_work import UnitOfWork
 @pytest.fixture()
 def settings(tmp_path) -> Settings:
     """Isolated file-based SQLite DB (a real file so threads get real connections)."""
-    return replace(Settings(), database_url=f"sqlite:///{tmp_path / 'test.db'}")
+    return replace(Settings(), database_url=f"sqlite:///{tmp_path / 'test.db'}",
+                   auto_settle_free_stays=False)
+
+
+def _seed_test_data(database: Database) -> None:
+    """Tests assume plates A001AA/B777BB are staff and the tariff has no free minutes."""
+    from sqlalchemy import select
+    from app.db.models import Employee, Tariff
+
+    with database.session() as db:
+        for plate in ("A001AA", "B777BB"):
+            if not db.scalar(select(Employee.id).where(Employee.plate_number == plate)):
+                db.add(Employee(plate_number=plate, full_name="Тест"))
+        db.commit()
 
 
 @pytest.fixture()
 def client(settings):
-    with TestClient(create_app(settings)) as test_client:
+    app = create_app(settings)
+    with TestClient(app) as test_client:
+        _seed_test_data(app.state.database)
         yield test_client
 
 
@@ -60,6 +75,7 @@ class Scope:
 def database(settings):
     db = Database(settings.database_url)
     initialize_database(db, settings)
+    _seed_test_data(db)
     yield db
     db.dispose()
 

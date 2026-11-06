@@ -6,13 +6,11 @@ from fastapi import APIRouter, Depends
 
 from app import schemas
 from app.api.dependencies import get_parking_service
-from app.api.security import require_service_token
 from app.services.parking import ParkingService
 
 router = APIRouter(
     prefix="/api/sim",
     tags=["Симуляция датчиков и камер"],
-    dependencies=[Depends(require_service_token)],
 )
 
 
@@ -33,11 +31,13 @@ def sim_sensor(
     service: ParkingService = Depends(get_parking_service),
 ):
     if payload.occupied:
-        session = service.occupy_slot(slot_id, payload.plate_number)
+        session = service.report_slot_occupied(slot_id, payload.plate_number)
         return schemas.SessionOut.model_validate(session)
-    slot = service.release_slot(slot_id)
+    slot, applied = service.report_slot_free(slot_id)
     return schemas.SlotReleaseOut(
-        detail="Слот освобождён вручную", slot=schemas.SlotOut.model_validate(slot)
+        detail="Слот освобождён" if applied
+        else "FREE проигнорирован: слот заблокирован активной сессией (выезд только через EXIT_OCR)",
+        slot=schemas.SlotOut.model_validate(slot),
     )
 
 

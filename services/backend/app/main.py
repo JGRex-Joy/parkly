@@ -14,7 +14,7 @@ from fastapi.templating import Jinja2Templates
 
 from app.api.routers import admin, display, hardware, payment, simulation, system
 from app.context import reset_correlation_id, set_correlation_id
-from app.services.payment_providers import build_provider
+from app.services.mock_payment import MockPaymentProvider
 from app.db.bootstrap import initialize_database
 from app.core.config import Settings
 from app.core.websocket import ConnectionManager as DashboardConnectionManager
@@ -57,31 +57,17 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app.state.connection_manager = manager
     app.state.dashboard_manager = dashboard_manager
     app.state.publisher = WebSocketPublisher(manager, dashboard_manager)
-    app.state.payment_provider = build_provider(settings)
-    if app.state.payment_provider.is_simulated:
-        logger.warning("PAYMENT SIMULATION ENABLED (PARKING_ENV=%s): payments are NOT real", settings.environment)
+    app.state.payment_provider = MockPaymentProvider()
+    logger.info("Mock payments enabled; QR/pay links use %s", settings.base_url)
     app.state.templates = Jinja2Templates(directory=str(settings.templates_dir))
 
-    # CORS for REST calls from the web admin dashboard. (Browsers do not enforce CORS on
-    # WebSocket handshakes, so /ws/parking is reachable from any dev origin regardless.)
-    #   PARKING_CORS_ORIGINS="*"            -> any origin
-    #   PARKING_CORS_ORIGINS="http://a,b"   -> exactly those origins
-    #   unset (non-production)              -> localhost / 127.0.0.1 on any dev port
-    origins = list(settings.cors_origins)
-    wildcard = "*" in origins
-    local_dev = settings.environment != "production"
-    if origins or local_dev:
-        app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"] if wildcard else origins,
-            allow_origin_regex=(
-                r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
-                if local_dev and not wildcard else None
-            ),
-            allow_methods=["*"],
-            allow_headers=["*"],
-            expose_headers=["X-Correlation-ID"],
-        )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["X-Correlation-ID"],
+    )
 
     @app.middleware("http")
     async def correlation_id_middleware(request: Request, call_next):

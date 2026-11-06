@@ -1,15 +1,12 @@
 from __future__ import annotations
 
-from typing import Optional
-
-from fastapi import APIRouter, Depends, Header, Request
-from fastapi.concurrency import run_in_threadpool
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 from app import schemas
 from app.api.dependencies import get_payment_service, get_templates
-from app.db.models import PaymentStatus, SessionStatus
+from app.db.models import SessionStatus
 from app.services.payment import PaymentService
 
 router = APIRouter(tags=["Оплата"])
@@ -59,11 +56,11 @@ def payment_status(session_id: int, service: PaymentService = Depends(get_paymen
 
 
 @router.post("/api/pay/{session_id}", response_model=schemas.PaymentResult,
-             summary="DEV/TEST: имитировать оплату (только при PARKING_PAYMENT_MODE=simulated)")
+             summary="Мок-оплата: мгновенно успешна, ключи не нужны")
 def confirm_payment(
     session_id: int, service: PaymentService = Depends(get_payment_service)
 ):
-    session = service.confirm_simulated_payment(session_id)
+    session = service.pay(session_id)
     return schemas.PaymentResult(
         session_id=session.id,
         status=session.status,
@@ -72,25 +69,3 @@ def confirm_payment(
         exit_authorized=True,
         simulated=True,
     )
-
-
-@router.post("/api/payments/webhook", 
-             summary="Уведомление платёжного провайдера (подпись HMAC)")
-async def payment_webhook(
-    request: Request,
-    x_signature: Optional[str] = Header(None),
-    service: PaymentService = Depends(get_payment_service),
-):
-    raw = await request.body()
-    result = await run_in_threadpool(service.handle_provider_callback, raw, x_signature)
-    if result.already_processed:
-        outcome = "duplicate"
-    elif result.payment.status == PaymentStatus.SUCCEEDED:
-        outcome = "processed"
-    else:
-        outcome = "ignored"
-    return {
-        "status": outcome,
-        "session_id": result.session.id,
-        "session_status": result.session.status.value,
-    }
