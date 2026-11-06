@@ -6,7 +6,6 @@ from typing import Callable, Optional
 
 from app.api.exceptions import (
     ConflictError,
-    ForbiddenError,
     NotFoundError,
     ValidationFailedError,
 )
@@ -14,11 +13,7 @@ from app.db.models import ParkingSession, Payment, PaymentStatus, SessionStatus
 from app.repositories import Repositories
 from app.services import parking_events as ev
 from app.services.display import DisplayPayloadBuilder
-from app.services.payment_providers import (
-    PaymentProvider,
-    PaymentVerificationError,
-    SimulatedProvider,
-)
+from app.services.mock_payment import MockPaymentProvider
 from app.services.state_machine import transition
 from app.services.unit_of_work import Outbox, UnitOfWork
 from app.utils import format_duration_hms, utcnow
@@ -53,7 +48,7 @@ class PaymentService:
         displays: DisplayPayloadBuilder,
         *,
         clock: Callable[[], datetime] = utcnow,
-        provider: Optional[PaymentProvider] = None,
+        provider: Optional[MockPaymentProvider] = None,
         currency: str = "KGS",
         rejections=None,
     ) -> None:
@@ -61,7 +56,7 @@ class PaymentService:
         self._uow = uow
         self._displays = displays
         self._clock = clock
-        self._provider = provider or SimulatedProvider()
+        self._provider = provider or MockPaymentProvider()
         self._currency = currency
         self._rejections = rejections
 
@@ -84,69 +79,23 @@ class PaymentService:
             currency=self._currency,
         )
 
-    def confirm_simulated_payment(self, session_id: int) -> ParkingSession:
-        if not self._provider.is_simulated:
-            self._audit_rejection("payment_rejected", session_id=session_id,
-                                  reason="simulated payments are disabled")
-            raise ForbiddenError(
-                "Симуляция оплаты отключена (PARKING_PAYMENT_MODE != simulated). "
-                "Оплата подтверждается только подписанным уведомлением платёжного провайдера."
-            )
+    def pay(self, session_id: int) -> ParkingSession:
         try:
             with self._uow.transaction() as outbox:
                 session = self._require_session(session_id)
                 payment = self._open_payment(session)
-                result = self._settle(
-                    session, payment,
-                    transaction_id=f"SIMTXN-{payment.reference}",
-                    amount=payment.amount, currency=payment.currency, outbox=outbox,
+                result = self._provider.charge(payment.reference, payment.amount, payment.currency)
+                settled = self._settle(
+                    session, payment, transaction_id=result["transaction_id"],
+                    amount=result["amount"], currency=result["currency"], outbox=outbox,
                 )
-            return result.session
+            return settled.session
         except (ConflictError, NotFoundError) as exc:
             self._audit_rejection("payment_rejected", session_id=session_id, reason=exc.detail)
             raise
 
-    def handle_provider_callback(self, raw_body: bytes, signature: Optional[str]) -> SettlementResult:
-        try:
-            cb = self._provider.verify_callback(raw_body, signature)
-        except PaymentVerificationError as exc:
-            self._audit_rejection("payment_callback_rejected", reason=str(exc))
-            raise ForbiddenError(f"Уведомление об оплате не принято: {exc}") from exc
-
-        try:
-            with self._uow.transaction() as outbox:
-                known = self._repos.payments.by_txn(cb.transaction_id)
-                if known is not None:  
-                    session = self._require_session(known.session_id)
-                    self._repos.audit.add(
-                        "payment_callback_duplicate", session_id=session.id,
-                        transaction_id=cb.transaction_id,
-                    )
-                    return SettlementResult(session, known, already_processed=True)
-
-                payment = self._repos.payments.by_reference(cb.reference)
-                if payment is None:
-                    raise NotFoundError("Платёжный запрос не найден")
-                session = self._require_session(payment.session_id)
-
-                if cb.status != "succeeded":
-                    self._repos.audit.add(
-                        "payment_failed_by_provider", session_id=session.id,
-                        reference=cb.reference, status=cb.status,
-                    )
-                    return SettlementResult(session, payment, already_processed=False)
-
-                return self._settle(
-                    session, payment, transaction_id=cb.transaction_id,
-                    amount=cb.amount, currency=cb.currency, outbox=outbox,
-                )
-        except (ConflictError, NotFoundError, ValidationFailedError) as exc:
-            self._audit_rejection("payment_callback_rejected", reason=exc.detail,
-                                  reference=cb.reference, transaction_id=cb.transaction_id)
-            raise
-
-    def confirm_payment(self, session_id: int) -> ParkingSession:
-        return self.confirm_simulated_payment(session_id)
+    confirm_simulated_payment = pay
+    confirm_payment = pay
 
     def _require_session(self, session_id: int) -> ParkingSession:
         session = self._repos.sessions.get(session_id)

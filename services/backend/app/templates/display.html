@@ -38,7 +38,7 @@ function render(msg) {
       (msg.tariff ? `<div class="row"><span>Tariff</span><span>${esc(msg.tariff.price_per_minute)} / min, first ${esc(msg.tariff.free_minutes)} min free</span></div>` : "");
   } else if (msg.event === "exit_bill") {
     const d = msg.duration;
-    view.innerHTML = (msg.payment_simulated ? `<div class="banner">TEST MODE: simulated payment, no real money</div>` : "") +
+    view.innerHTML = (msg.payment_simulated ? `<div class="banner">DEMO MODE: mock payment, no real money</div>` : "") +
       `<div class="plate">${esc(msg.plate_number)}</div>
        <div class="row"><span>Time</span><span>${d.hours}h ${d.minutes}m ${d.seconds}s</span></div>
        <div class="big">${Number(msg.amount_due).toFixed(2)} <span class="muted">${esc(msg.currency || "")}</span></div>

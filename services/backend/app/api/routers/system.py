@@ -6,7 +6,7 @@ from sqlalchemy import text
 from app.api.dependencies import get_database, get_provider, get_settings
 from app.core.config import Settings
 from app.db.database import Database
-from app.services.payment_providers import PaymentProvider
+from app.services.mock_payment import MockPaymentProvider
 
 router = APIRouter()
 
@@ -38,17 +38,14 @@ def health(database: Database = Depends(get_database)):
 @router.get("/api/system/config", tags=["Служебное"], 
             summary="Безопасная часть конфигурации (без секретов)")
 def public_config(
-    settings: Settings = Depends(get_settings), provider: PaymentProvider = Depends(get_provider)
+    settings: Settings = Depends(get_settings), provider: MockPaymentProvider = Depends(get_provider)
 ):
     return {
-        "environment": settings.environment,
-        "payment_mode": settings.payment_mode,
+        "payment_mode": "mock",
         "payment_simulated": provider.is_simulated,
         "currency": settings.currency,
         "billing_start": settings.billing_start,
         "auth_ttl_seconds": settings.auth_ttl_seconds,
         "ambiguous_slot_policy": settings.ambiguous_slot_policy,
-        "service_token_required": bool(settings.service_token),
-        "admin_endpoints_enabled": bool(settings.admin_token),
-        "webhook_secret_configured": bool(settings.payment_webhook_secret),
+        "base_url": settings.base_url,
     }

@@ -8,7 +8,7 @@ from fastapi.concurrency import run_in_threadpool
 from app.core.config import Settings
 from app.db.database import Database
 from app.api.dependencies import get_connection_manager, get_database, get_provider, get_settings
-from app.services.payment_providers import PaymentProvider
+from app.services.mock_payment import MockPaymentProvider
 from app.repositories import Repositories
 from app.services.display import DisplayPayloadBuilder
 from app.websocket_manager import ConnectionManager
@@ -19,7 +19,7 @@ router = APIRouter(tags=["WebSocket дисплеи"])
 def _snapshot(
     database: Database,
     settings: Settings,
-    provider: PaymentProvider,
+    provider: MockPaymentProvider,
     build: Callable[[DisplayPayloadBuilder], dict],
 ) -> dict:
     with database.session() as db:
@@ -57,7 +57,7 @@ async def ws_entry_display(
     manager: ConnectionManager = Depends(get_connection_manager),
     database: Database = Depends(get_database),
     settings: Settings = Depends(get_settings),
-    provider: PaymentProvider = Depends(get_provider),
+    provider: MockPaymentProvider = Depends(get_provider),
 ):
     await _serve(
         "entry", websocket, manager,
@@ -71,7 +71,7 @@ async def ws_exit_display(
     manager: ConnectionManager = Depends(get_connection_manager),
     database: Database = Depends(get_database),
     settings: Settings = Depends(get_settings),
-    provider: PaymentProvider = Depends(get_provider),
+    provider: MockPaymentProvider = Depends(get_provider),
 ):
     await _serve(
         "exit", websocket, manager,

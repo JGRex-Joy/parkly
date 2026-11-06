@@ -1,574 +1,1439 @@
 {
-  "components": {
-    "schemas": {
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
-        "type": "object"
-      },
-      "PaymentResult": {
-        "properties": {
-          "amount_paid": {
-            "title": "Amount Paid",
-            "type": "number"
-          },
-          "barrier_opened": {
-            "default": true,
-            "title": "Barrier Opened",
-            "type": "boolean"
-          },
-          "session_id": {
-            "title": "Session Id",
-            "type": "integer"
-          },
-          "status": {
-            "$ref": "#/components/schemas/SessionStatus"
-          }
-        },
-        "required": [
-          "session_id",
-          "status",
-          "amount_paid"
-        ],
-        "title": "PaymentResult",
-        "type": "object"
-      },
-      "SessionOut": {
-        "properties": {
-          "amount_due": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Amount Due"
-          },
-          "duration_seconds": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Duration Seconds"
-          },
-          "entry_time": {
-            "format": "date-time",
-            "title": "Entry Time",
-            "type": "string"
-          },
-          "exit_time": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exit Time"
-          },
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "paid_time": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Paid Time"
-          },
-          "parked_time": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parked Time"
-          },
-          "plate_number": {
-            "title": "Plate Number",
-            "type": "string"
-          },
-          "slot_id": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Slot Id"
-          },
-          "status": {
-            "$ref": "#/components/schemas/SessionStatus"
-          }
-        },
-        "required": [
-          "id",
-          "plate_number",
-          "status",
-          "entry_time"
-        ],
-        "title": "SessionOut",
-        "type": "object"
-      },
-      "SessionStatus": {
-        "enum": [
-          "ENTERED",
-          "PARKED",
-          "AWAITING_PAYMENT",
-          "PAID",
-          "EMPLOYEE_PASS"
-        ],
-        "title": "SessionStatus",
+ "components": {
+  "schemas": {
+   "BarrierEventIn": {
+    "properties": {
+     "event": {
+      "title": "Event",
+      "type": "string"
+     },
+     "event_id": {
+      "title": "Event Id",
+      "type": "string"
+     },
+     "gate": {
+      "title": "Gate",
+      "type": "string"
+     },
+     "plate_number": {
+      "anyOf": [
+       {
         "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate Number"
+     }
+    },
+    "required": [
+     "event_id",
+     "gate",
+     "event"
+    ],
+    "title": "BarrierEventIn",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
       },
-      "SimEntryRequest": {
-        "properties": {
-          "plate_number": {
-            "default": "C123CC",
-            "title": "Plate Number",
-            "type": "string"
-          }
-        },
-        "title": "SimEntryRequest",
-        "type": "object"
-      },
-      "SimExitRequest": {
-        "properties": {
-          "plate_number": {
-            "default": "C123CC",
-            "title": "Plate Number",
-            "type": "string"
-          }
-        },
-        "title": "SimExitRequest",
-        "type": "object"
-      },
-      "SimSensorRequest": {
-        "properties": {
-          "occupied": {
-            "default": true,
-            "title": "Occupied",
-            "type": "boolean"
-          },
-          "plate_number": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Plate Number"
-          }
-        },
-        "title": "SimSensorRequest",
-        "type": "object"
-      },
-      "SlotOut": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "slot_number": {
-            "title": "Slot Number",
-            "type": "string"
-          },
-          "slot_type": {
-            "$ref": "#/components/schemas/SlotType"
-          },
-          "status": {
-            "$ref": "#/components/schemas/SlotStatus"
-          }
-        },
-        "required": [
-          "id",
-          "slot_number",
-          "slot_type",
-          "status"
-        ],
-        "title": "SlotOut",
-        "type": "object"
-      },
-      "SlotStatus": {
-        "enum": [
-          "FREE",
-          "PARKED"
-        ],
-        "title": "SlotStatus",
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "OverrideIn": {
+    "properties": {
+     "reason": {
+      "title": "Reason",
+      "type": "string"
+     }
+    },
+    "required": [
+     "reason"
+    ],
+    "title": "OverrideIn",
+    "type": "object"
+   },
+   "PaymentConfirmIn": {
+    "properties": {
+     "plate": {
+      "anyOf": [
+       {
         "type": "string"
-      },
-      "SlotType": {
-        "enum": [
-          "PAID",
-          "EMPLOYEE"
-        ],
-        "title": "SlotType",
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate"
+     },
+     "plate_number": {
+      "anyOf": [
+       {
         "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate Number"
+     },
+     "session_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Session Id"
+     }
+    },
+    "title": "PaymentConfirmIn",
+    "type": "object"
+   },
+   "PaymentResult": {
+    "properties": {
+     "amount_paid": {
+      "title": "Amount Paid",
+      "type": "number"
+     },
+     "barrier_opened": {
+      "default": false,
+      "title": "Barrier Opened",
+      "type": "boolean"
+     },
+     "exit_authorized": {
+      "default": true,
+      "title": "Exit Authorized",
+      "type": "boolean"
+     },
+     "session_id": {
+      "title": "Session Id",
+      "type": "integer"
+     },
+     "simulated": {
+      "default": false,
+      "title": "Simulated",
+      "type": "boolean"
+     },
+     "status": {
+      "$ref": "#/components/schemas/SessionStatus"
+     }
+    },
+    "required": [
+     "session_id",
+     "status",
+     "amount_paid"
+    ],
+    "title": "PaymentResult",
+    "type": "object"
+   },
+   "PaymentStatusOut": {
+    "properties": {
+     "amount": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amount"
+     },
+     "currency": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Currency"
+     },
+     "exit_authorized": {
+      "default": false,
+      "title": "Exit Authorized",
+      "type": "boolean"
+     },
+     "payment_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Payment Status"
+     },
+     "reference": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reference"
+     },
+     "session_id": {
+      "title": "Session Id",
+      "type": "integer"
+     },
+     "session_status": {
+      "$ref": "#/components/schemas/SessionStatus"
+     },
+     "simulated": {
+      "default": false,
+      "title": "Simulated",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "session_id",
+     "session_status"
+    ],
+    "title": "PaymentStatusOut",
+    "type": "object"
+   },
+   "PlateIn": {
+    "properties": {
+     "plate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate"
+     },
+     "plate_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate Number"
+     }
+    },
+    "title": "PlateIn",
+    "type": "object"
+   },
+   "SessionOut": {
+    "properties": {
+     "amount_due": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Amount Due"
+     },
+     "completed_time": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Completed Time"
+     },
+     "duration_seconds": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Duration Seconds"
+     },
+     "entry_time": {
+      "format": "date-time",
+      "title": "Entry Time",
+      "type": "string"
+     },
+     "exception_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exception Reason"
+     },
+     "exit_authorized_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit Authorized At"
+     },
+     "exit_time": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exit Time"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "paid_time": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Paid Time"
+     },
+     "parked_time": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Parked Time"
+     },
+     "plate_number": {
+      "title": "Plate Number",
+      "type": "string"
+     },
+     "slot_assignment": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slot Assignment"
+     },
+     "slot_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Slot Id"
+     },
+     "status": {
+      "$ref": "#/components/schemas/SessionStatus"
+     }
+    },
+    "required": [
+     "id",
+     "plate_number",
+     "status",
+     "entry_time"
+    ],
+    "title": "SessionOut",
+    "type": "object"
+   },
+   "SessionStatus": {
+    "enum": [
+     "ENTERED",
+     "PARKED",
+     "AWAITING_PAYMENT",
+     "PAID",
+     "EMPLOYEE_PASS",
+     "COMPLETED",
+     "EXCEPTION"
+    ],
+    "title": "SessionStatus",
+    "type": "string"
+   },
+   "SimEntryRequest": {
+    "properties": {
+     "plate_number": {
+      "default": "01KG111AAA",
+      "title": "Plate Number",
+      "type": "string"
+     }
+    },
+    "title": "SimEntryRequest",
+    "type": "object"
+   },
+   "SimExitRequest": {
+    "properties": {
+     "plate_number": {
+      "default": "01KG111AAA",
+      "title": "Plate Number",
+      "type": "string"
+     }
+    },
+    "title": "SimExitRequest",
+    "type": "object"
+   },
+   "SimSensorRequest": {
+    "properties": {
+     "occupied": {
+      "default": true,
+      "title": "Occupied",
+      "type": "boolean"
+     },
+     "plate_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate Number"
+     }
+    },
+    "title": "SimSensorRequest",
+    "type": "object"
+   },
+   "SlotOut": {
+    "properties": {
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "slot_number": {
+      "title": "Slot Number",
+      "type": "string"
+     },
+     "slot_type": {
+      "$ref": "#/components/schemas/SlotType"
+     },
+     "status": {
+      "$ref": "#/components/schemas/SlotStatus"
+     }
+    },
+    "required": [
+     "id",
+     "slot_number",
+     "slot_type",
+     "status"
+    ],
+    "title": "SlotOut",
+    "type": "object"
+   },
+   "SlotStatus": {
+    "enum": [
+     "FREE",
+     "PARKED"
+    ],
+    "title": "SlotStatus",
+    "type": "string"
+   },
+   "SlotType": {
+    "enum": [
+     "PAID",
+     "EMPLOYEE"
+    ],
+    "title": "SlotType",
+    "type": "string"
+   },
+   "SlotUpdateIn": {
+    "properties": {
+     "occupied": {
+      "default": true,
+      "title": "Occupied",
+      "type": "boolean"
+     },
+     "plate": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate"
+     },
+     "plate_number": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Plate Number"
+     },
+     "slot_id": {
+      "title": "Slot Id",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "slot_id"
+    ],
+    "title": "SlotUpdateIn",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
       },
-      "ValidationError": {
-        "properties": {
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      }
-    }
-  },
-  "info": {
-    "description": "Макет умной парковки. Все датчики/камеры эмулируются",
-    "title": "Smart Parking Management System",
-    "version": "0.2"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/": {
-      "get": {
-        "operationId": "root__get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Проверка, что сервис жив",
-        "tags": [
-          "Служебное"
-        ]
-      }
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
     },
-    "/api/pay/{session_id}": {
-      "post": {
-        "operationId": "confirm_payment_api_pay__session_id__post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "title": "Session Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaymentResult"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Подтвердить оплату",
-        "tags": [
-          "Оплата"
-        ]
-      }
-    },
-    "/api/sim/entry": {
-      "post": {
-        "operationId": "sim_entry_api_sim_entry_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SimEntryRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/SessionOut"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ],
-                  "title": "Response Sim Entry Api Sim Entry Post"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Въездная камера считала номер / сотрудник поднёс пропуск",
-        "tags": [
-          "Симуляция датчиков и камер"
-        ]
-      }
-    },
-    "/api/sim/exit": {
-      "post": {
-        "operationId": "sim_exit_api_sim_exit_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SimExitRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SessionOut"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Выездная камера считала номер (выставляем счёт и QR)",
-        "tags": [
-          "Симуляция датчиков и камер"
-        ]
-      }
-    },
-    "/api/sim/sensor/{slot_id}": {
-      "post": {
-        "operationId": "sim_sensor_api_sim_sensor__slot_id__post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "slot_id",
-            "required": true,
-            "schema": {
-              "title": "Slot Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SimSensorRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Датчик слота сработал (машина встала/уехала с конкретного места)",
-        "tags": [
-          "Симуляция датчиков и камер"
-        ]
-      }
-    },
-    "/api/sim/sessions": {
-      "get": {
-        "operationId": "list_sessions_api_sim_sessions_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/SessionOut"
-                  },
-                  "title": "Response List Sessions Api Sim Sessions Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Все сессии парковки (debug)",
-        "tags": [
-          "Симуляция датчиков и камер"
-        ]
-      }
-    },
-    "/api/sim/slots": {
-      "get": {
-        "operationId": "list_slots_api_sim_slots_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/SlotOut"
-                  },
-                  "title": "Response List Slots Api Sim Slots Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Текущее состояние всех слотов (debug)",
-        "tags": [
-          "Симуляция датчиков и камер"
-        ]
-      }
-    },
-    "/pay/{session_id}": {
-      "get": {
-        "operationId": "pay_page_pay__session_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "title": "Session Id",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "text/html": {
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Страница оплаты (открывается по QR)",
-        "tags": [
-          "Оплата"
-        ]
-      }
-    }
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   }
   }
+ },
+ "info": {
+  "description": "\u041c\u0430\u043a\u0435\u0442 \u0443\u043c\u043d\u043e\u0439 \u043f\u0430\u0440\u043a\u043e\u0432\u043a\u0438. \u0412\u0441\u0435 \u0434\u0430\u0442\u0447\u0438\u043a\u0438/\u043a\u0430\u043c\u0435\u0440\u044b \u044d\u043c\u0443\u043b\u0438\u0440\u0443\u044e\u0442\u0441\u044f",
+  "title": "Smart Parking Management System",
+  "version": "0.3"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/": {
+   "get": {
+    "operationId": "root__get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "\u041f\u0440\u043e\u0432\u0435\u0440\u043a\u0430, \u0447\u0442\u043e \u0441\u0435\u0440\u0432\u0438\u0441 \u0436\u0438\u0432",
+    "tags": [
+     "\u0421\u043b\u0443\u0436\u0435\u0431\u043d\u043e\u0435"
+    ]
+   }
+  },
+  "/api/admin/audit": {
+   "get": {
+    "operationId": "audit_api_admin_audit_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "session_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Session Id"
+      }
+     },
+     {
+      "in": "query",
+      "name": "correlation_id",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Correlation Id"
+      }
+     },
+     {
+      "in": "query",
+      "name": "kind",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Kind"
+      }
+     },
+     {
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 200,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0416\u0443\u0440\u043d\u0430\u043b \u0441\u043e\u0431\u044b\u0442\u0438\u0439 (\u043f\u043e \u0441\u0435\u0441\u0441\u0438\u0438 \u0438\u043b\u0438 correlation id)",
+    "tags": [
+     "\u041e\u043f\u0435\u0440\u0430\u0442\u043e\u0440"
+    ]
+   }
+  },
+  "/api/admin/sessions/{session_id}/exit-override": {
+   "post": {
+    "operationId": "exit_override_api_admin_sessions__session_id__exit_override_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "session_id",
+      "required": true,
+      "schema": {
+       "title": "Session Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/OverrideIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0420\u0443\u0447\u043d\u043e\u0435 \u0440\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u0438\u0435 \u0432\u044b\u0435\u0437\u0434\u0430 (\u043d\u0435\u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043d\u044b\u0439 \u043d\u043e\u043c\u0435\u0440, \u043d\u0435\u0442 \u043e\u043f\u043b\u0430\u0442\u044b \u0438 \u0442.\u043f.). \u0410\u0443\u0434\u0438\u0440\u0443\u0435\u0442\u0441\u044f.",
+    "tags": [
+     "\u041e\u043f\u0435\u0440\u0430\u0442\u043e\u0440"
+    ]
+   }
+  },
+  "/api/hardware/authorizations": {
+   "get": {
+    "operationId": "pending_authorizations_api_hardware_authorizations_get",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "gate",
+      "required": true,
+      "schema": {
+       "title": "Gate",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0420\u0430\u0437\u0440\u0435\u0448\u0435\u043d\u0438\u044f \u043d\u0430 \u043e\u0442\u043a\u0440\u044b\u0442\u0438\u0435 \u0448\u043b\u0430\u0433\u0431\u0430\u0443\u043c\u0430, \u0435\u0449\u0451 \u043d\u0435 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0451\u043d\u043d\u044b\u0435 \u043a\u043e\u043d\u0442\u0440\u043e\u043b\u043b\u0435\u0440\u043e\u043c",
+    "tags": [
+     "\u041e\u0431\u043e\u0440\u0443\u0434\u043e\u0432\u0430\u043d\u0438\u0435 (bridge)"
+    ]
+   }
+  },
+  "/api/hardware/authorizations/{gate}/{session_id}/opened": {
+   "post": {
+    "operationId": "ack_open_api_hardware_authorizations__gate___session_id__opened_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "gate",
+      "required": true,
+      "schema": {
+       "title": "Gate",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "session_id",
+      "required": true,
+      "schema": {
+       "title": "Session Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u041a\u043e\u043d\u0442\u0440\u043e\u043b\u043b\u0435\u0440 \u043f\u043e\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u043b \u043a\u043e\u043c\u0430\u043d\u0434\u0443 OPEN (ACK), \u0438\u0434\u0435\u043c\u043f\u043e\u0442\u0435\u043d\u0442\u043d\u043e",
+    "tags": [
+     "\u041e\u0431\u043e\u0440\u0443\u0434\u043e\u0432\u0430\u043d\u0438\u0435 (bridge)"
+    ]
+   }
+  },
+  "/api/hardware/barrier-events": {
+   "post": {
+    "operationId": "barrier_event_api_hardware_barrier_events_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BarrierEventIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u041d\u0430\u0431\u043b\u044e\u0434\u0435\u043d\u0438\u0435 \u0434\u0430\u0442\u0447\u0438\u043a\u043e\u0432/\u0448\u043b\u0430\u0433\u0431\u0430\u0443\u043c\u0430 (OPENED, CLOSED, VEHICLE_CLEARED)",
+    "tags": [
+     "\u041e\u0431\u043e\u0440\u0443\u0434\u043e\u0432\u0430\u043d\u0438\u0435 (bridge)"
+    ]
+   }
+  },
+  "/api/pay/{session_id}": {
+   "post": {
+    "operationId": "confirm_payment_api_pay__session_id__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "session_id",
+      "required": true,
+      "schema": {
+       "title": "Session Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentResult"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u041c\u043e\u043a-\u043e\u043f\u043b\u0430\u0442\u0430: \u043c\u0433\u043d\u043e\u0432\u0435\u043d\u043d\u043e \u0443\u0441\u043f\u0435\u0448\u043d\u0430, \u043a\u043b\u044e\u0447\u0438 \u043d\u0435 \u043d\u0443\u0436\u043d\u044b",
+    "tags": [
+     "\u041e\u043f\u043b\u0430\u0442\u0430"
+    ]
+   }
+  },
+  "/api/pay/{session_id}/status": {
+   "get": {
+    "operationId": "payment_status_api_pay__session_id__status_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "session_id",
+      "required": true,
+      "schema": {
+       "title": "Session Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PaymentStatusOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0421\u0442\u0430\u0442\u0443\u0441 \u043e\u043f\u043b\u0430\u0442\u044b (\u043e\u043f\u0440\u0430\u0448\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435\u0439 \u043e\u043f\u043b\u0430\u0442\u044b)",
+    "tags": [
+     "\u041e\u043f\u043b\u0430\u0442\u0430"
+    ]
+   }
+  },
+  "/api/sim/entry": {
+   "post": {
+    "operationId": "sim_entry_api_sim_entry_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SimEntryRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "anyOf": [
+          {
+           "$ref": "#/components/schemas/SessionOut"
+          },
+          {
+           "type": "null"
+          }
+         ],
+         "title": "Response Sim Entry Api Sim Entry Post"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0412\u044a\u0435\u0437\u0434\u043d\u0430\u044f \u043a\u0430\u043c\u0435\u0440\u0430 \u0441\u0447\u0438\u0442\u0430\u043b\u0430 \u043d\u043e\u043c\u0435\u0440 / \u0441\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a \u043f\u043e\u0434\u043d\u0451\u0441 \u043f\u0440\u043e\u043f\u0443\u0441\u043a",
+    "tags": [
+     "\u0421\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u044f \u0434\u0430\u0442\u0447\u0438\u043a\u043e\u0432 \u0438 \u043a\u0430\u043c\u0435\u0440"
+    ]
+   }
+  },
+  "/api/sim/exit": {
+   "post": {
+    "operationId": "sim_exit_api_sim_exit_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SimExitRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0412\u044b\u0435\u0437\u0434\u043d\u0430\u044f \u043a\u0430\u043c\u0435\u0440\u0430 \u0441\u0447\u0438\u0442\u0430\u043b\u0430 \u043d\u043e\u043c\u0435\u0440 (\u0432\u044b\u0441\u0442\u0430\u0432\u043b\u044f\u0435\u043c \u0441\u0447\u0451\u0442 \u0438 QR)",
+    "tags": [
+     "\u0421\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u044f \u0434\u0430\u0442\u0447\u0438\u043a\u043e\u0432 \u0438 \u043a\u0430\u043c\u0435\u0440"
+    ]
+   }
+  },
+  "/api/sim/sensor/{slot_id}": {
+   "post": {
+    "operationId": "sim_sensor_api_sim_sensor__slot_id__post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "slot_id",
+      "required": true,
+      "schema": {
+       "title": "Slot Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SimSensorRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0414\u0430\u0442\u0447\u0438\u043a \u0441\u043b\u043e\u0442\u0430 \u0441\u0440\u0430\u0431\u043e\u0442\u0430\u043b (\u043c\u0430\u0448\u0438\u043d\u0430 \u0432\u0441\u0442\u0430\u043b\u0430/\u0443\u0435\u0445\u0430\u043b\u0430 \u0441 \u043a\u043e\u043d\u043a\u0440\u0435\u0442\u043d\u043e\u0433\u043e \u043c\u0435\u0441\u0442\u0430)",
+    "tags": [
+     "\u0421\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u044f \u0434\u0430\u0442\u0447\u0438\u043a\u043e\u0432 \u0438 \u043a\u0430\u043c\u0435\u0440"
+    ]
+   }
+  },
+  "/api/sim/sessions": {
+   "get": {
+    "operationId": "list_sessions_api_sim_sessions_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SessionOut"
+         },
+         "title": "Response List Sessions Api Sim Sessions Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "\u0412\u0441\u0435 \u0441\u0435\u0441\u0441\u0438\u0438 \u043f\u0430\u0440\u043a\u043e\u0432\u043a\u0438 (debug)",
+    "tags": [
+     "\u0421\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u044f \u0434\u0430\u0442\u0447\u0438\u043a\u043e\u0432 \u0438 \u043a\u0430\u043c\u0435\u0440"
+    ]
+   }
+  },
+  "/api/sim/slots": {
+   "get": {
+    "operationId": "list_slots_api_sim_slots_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SlotOut"
+         },
+         "title": "Response List Slots Api Sim Slots Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "\u0422\u0435\u043a\u0443\u0449\u0435\u0435 \u0441\u043e\u0441\u0442\u043e\u044f\u043d\u0438\u0435 \u0432\u0441\u0435\u0445 \u0441\u043b\u043e\u0442\u043e\u0432 (debug)",
+    "tags": [
+     "\u0421\u0438\u043c\u0443\u043b\u044f\u0446\u0438\u044f \u0434\u0430\u0442\u0447\u0438\u043a\u043e\u0432 \u0438 \u043a\u0430\u043c\u0435\u0440"
+    ]
+   }
+  },
+  "/api/system/config": {
+   "get": {
+    "operationId": "public_config_api_system_config_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "\u0411\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u0430\u044f \u0447\u0430\u0441\u0442\u044c \u043a\u043e\u043d\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u0438 (\u0431\u0435\u0437 \u0441\u0435\u043a\u0440\u0435\u0442\u043e\u0432)",
+    "tags": [
+     "\u0421\u043b\u0443\u0436\u0435\u0431\u043d\u043e\u0435"
+    ]
+   }
+  },
+  "/api/v1/entry": {
+   "post": {
+    "operationId": "entry_api_v1_entry_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlateIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Entry camera read a plate -> ENTRY_OCR",
+    "tags": [
+     "v1: parking events"
+    ]
+   }
+  },
+  "/api/v1/exit": {
+   "post": {
+    "operationId": "exit__api_v1_exit_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PlateIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Exit camera read a plate -> EXIT_OCR",
+    "tags": [
+     "v1: parking events"
+    ]
+   }
+  },
+  "/api/v1/payment/confirm": {
+   "post": {
+    "operationId": "payment_confirm_api_v1_payment_confirm_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PaymentConfirmIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SessionOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Confirm payment -> PAYMENT_CONFIRMED (mock payment)",
+    "tags": [
+     "v1: parking events"
+    ]
+   }
+  },
+  "/api/v1/sessions": {
+   "get": {
+    "operationId": "sessions_api_v1_sessions_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/SessionOut"
+         },
+         "title": "Response Sessions Api V1 Sessions Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Session history (newest first)",
+    "tags": [
+     "v1: parking events"
+    ]
+   }
+  },
+  "/api/v1/slots/update": {
+   "post": {
+    "operationId": "slots_update_api_v1_slots_update_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SlotUpdateIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Slot sensor -> SLOT_OCCUPIED / SLOT_RELEASED",
+    "tags": [
+     "v1: parking events"
+    ]
+   }
+  },
+  "/display/{channel}": {
+   "get": {
+    "operationId": "display_page_display__channel__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "channel",
+      "required": true,
+      "schema": {
+       "enum": [
+        "entry",
+        "exit"
+       ],
+       "title": "Channel",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "text/html": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0421\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u0434\u0438\u0441\u043f\u043b\u0435\u044f \u0432\u044a\u0435\u0437\u0434\u0430/\u0432\u044b\u0435\u0437\u0434\u0430",
+    "tags": [
+     "\u0414\u0438\u0441\u043f\u043b\u0435\u0438"
+    ]
+   }
+  },
+  "/health": {
+   "get": {
+    "operationId": "health_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Liveness + \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c \u0411\u0414",
+    "tags": [
+     "\u0421\u043b\u0443\u0436\u0435\u0431\u043d\u043e\u0435"
+    ]
+   }
+  },
+  "/pay/{session_id}": {
+   "get": {
+    "operationId": "pay_page_pay__session_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "session_id",
+      "required": true,
+      "schema": {
+       "title": "Session Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "text/html": {
+        "schema": {
+         "type": "string"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "\u0421\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u043e\u043f\u043b\u0430\u0442\u044b (\u043e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u0442\u0441\u044f \u043f\u043e QR)",
+    "tags": [
+     "\u041e\u043f\u043b\u0430\u0442\u0430"
+    ]
+   }
+  }
+ }
 }

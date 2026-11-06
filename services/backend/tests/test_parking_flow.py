@@ -34,7 +34,7 @@ def test_root(client: TestClient):
     response = client.get("/")
     assert response.status_code == 200
     data = response.json()
-    assert data["service"] == "Smart Parking Management System"
+    assert data["service"] == "Parkly"
     assert data["docs"] == "/docs"
     assert data["entry_display_ws"] == "/ws/entry-display"
     assert data["exit_display_ws"] == "/ws/exit-display"

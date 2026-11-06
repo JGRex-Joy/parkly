@@ -8,7 +8,6 @@ from pydantic import BaseModel, model_validator
 from app import schemas
 from app.api.dependencies import get_parking_service, get_payment_service, get_repositories
 from app.api.exceptions import NotFoundError
-from app.api.security import require_service_token
 from app.db.models import SessionStatus
 from app.repositories import Repositories
 from app.services.parking import ParkingService
@@ -18,7 +17,6 @@ from app.utils import normalize_plate
 router = APIRouter(
     prefix="/api/v1",
     tags=["v1: parking events"],
-    dependencies=[Depends(require_service_token)],
 )
 
 
@@ -73,13 +71,17 @@ def exit_(body: PlateIn, service: ParkingService = Depends(get_parking_service))
 @router.post("/slots/update", summary="Slot sensor -> SLOT_OCCUPIED / SLOT_RELEASED")
 def slots_update(body: SlotUpdateIn, service: ParkingService = Depends(get_parking_service)):
     if body.occupied:
-        return schemas.SessionOut.model_validate(service.occupy_slot(body.slot_id, body.value))
-    slot = service.release_slot(body.slot_id)
-    return schemas.SlotReleaseOut(detail="slot released", slot=schemas.SlotOut.model_validate(slot))
+        return schemas.SessionOut.model_validate(service.report_slot_occupied(body.slot_id, body.value))
+    slot, applied = service.report_slot_free(body.slot_id)
+    return schemas.SlotReleaseOut(
+        detail="slot released" if applied
+        else "FREE ignored: slot locked by active session (exit only via EXIT_OCR)",
+        slot=schemas.SlotOut.model_validate(slot),
+    )
 
 
 @router.post("/payment/confirm", response_model=schemas.SessionOut,
-             summary="Confirm payment -> PAYMENT_CONFIRMED (PARKING_PAYMENT_MODE=simulated only)")
+             summary="Confirm payment -> PAYMENT_CONFIRMED (mock payment)")
 def payment_confirm(
     body: PaymentConfirmIn,
     payments: PaymentService = Depends(get_payment_service),
@@ -92,7 +94,7 @@ def payment_confirm(
         if session is None or session.status != SessionStatus.AWAITING_PAYMENT:
             raise NotFoundError("No bill awaiting payment for this plate")
         session_id = session.id
-    return payments.confirm_simulated_payment(session_id)
+    return payments.pay(session_id)
 
 
 @router.get("/sessions", response_model=list[schemas.SessionOut], summary="Session history (newest first)")
