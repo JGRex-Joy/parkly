@@ -1,0 +1,16 @@
+export const colors = {
+  bg: "#0f172a",
+  surface: "#111a2e",
+  border: "#1e293b",
+  borderStrong: "#2b3a52",
+  text: "#f1f5f9",
+  textMuted: "#94a3b8",
+  textFaint: "#64748b",
+  free: "#4ade80",
+  freeSoft: "rgba(74,222,128,0.10)",
+  warn: "#fbbf24",
+  warnSoft: "rgba(251,191,36,0.10)",
+  full: "#f87171",
+  fullSoft: "rgba(248,113,113,0.10)",
+  link: "#93c5fd",
+};
