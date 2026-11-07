@@ -1,37 +1,37 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.config import get_settings
-from app.routers import debug, gate, health, recognition
-from app.services.container import ServiceContainer
+from app.api import router
+from app.config import load_settings
+from app.services import Services
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    container = getattr(app.state, "container", None) or ServiceContainer.build(get_settings())
-    app.state.container = container
-    container.start()
+    services = getattr(app.state, "services", None) or Services.build(load_settings())
+    app.state.services = services
+    await asyncio.to_thread(services.start)
     try:
         yield
     finally:
-        container.stop()  
+        await asyncio.to_thread(services.stop)
 
 
 def create_app() -> FastAPI:
     application = FastAPI(
         title="Smart Parking - OCR Service (KG plates)",
         description="Распознавание кыргызских автомобильных номеров через OpenCV + EasyOCR.",
-        version="0.2.0",
+        version="0.4.0",
         lifespan=lifespan,
     )
-    for module in (recognition, gate, debug, health):
-        application.include_router(module.router)
+    application.include_router(router)
     return application
 
 

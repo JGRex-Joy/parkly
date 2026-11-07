@@ -1,66 +1,142 @@
-# OCR service (KG plates)
+# OCR Service - Kyrgyz license plates (OpenCV + EasyOCR)
 
-FastAPI service that reads plates of the form `DD LL DDD LLL` (e.g. `01KG111AAA`: region, country, serial, series),
-takes frames from a phone camera and forwards trusted plates to the parking backend.
-Run: `pip install -r requirements.txt && uvicorn app.main:app` (config: `.env.example`, all via environment variables).
+Reads `01KG111AAA`-style plates from a camera, validates them and forwards them to the parking backend.
+**The HTTP API is unchanged**: same routes, parameters, payloads, error messages - the OpenAPI schema is byte-identical
+to the pre-refactor snapshot (`tests/fixtures/openapi_v0.2.0.json`, enforced by a test).
 
-## Layout
-`app/main.py` entry · `config/` settings · `schemas/` API models · `models/` domain objects · `repositories/` backend HTTP,
-EasyOCR model, fixture frames · `services/` recognition pipeline, gate rules, camera facade · `routers/` endpoints ·
-`cameras/` camera sources · `utils/` · `scripts/` · `tests/`.
+## Run it
 
-## API
-Unchanged from 0.2.0: `POST /recognize`, `POST /gate-event/signal`, `POST /gate-event/with-photo`,
-`GET /debug/camera-snapshot`, `GET /health` — same URLs, parameters, schemas, status codes and messages.
-`tests/test_api_compat.py` compares the generated OpenAPI with a snapshot taken from the original code.
-Only addition in values: `frame_source` is `"ip_camera"` for the IP source (both Iriun cameras, USB and Wi-Fi, report `"webcam"`).
-`plate_number` stays without the country code (`01111AAA`); `formatted` stays `01 KG 111 AAA`.
+Python 3.10+ (developed and tested on 3.10).
 
-## Cameras
-Independent sources, each with its own settings, bound to gates by `CAMERA_ENTRY_SOURCE` / `CAMERA_EXIT_SOURCE` (`usb`|`wifi`|`ip`, defaults `usb` / `wifi`).
-- **`usb` — phone over USB via Iriun Webcam:** a *local video device*, `CAMERA_USB_INDEX` (default `2`, or `auto`).
-- **`wifi` — phone over Wi-Fi via Iriun Webcam:** also a *local video device* (Iriun creates a virtual camera on the laptop), `CAMERA_WIFI_INDEX` (default `3`). It is **not** an IP URL.
-- **`ip` — real network stream** (Android IP Webcam `http://<ip>:8080/video`, `rtsp://...`): `CAMERA_IP_URL`, open/read timeouts. Not used for Iriun.
-Both local sources share the same options (`CAMERA_USB_*` / `CAMERA_WIFI_*`): index, backend chain, resolution, FOURCC, open timeout.
-Find indexes with `python scripts/find_cameras.py --save snapshots` (open the snapshots to see which phone is which; swap the two indexes if needed).
+```bash
+python -m venv .venv
+# Windows:  .venv\Scripts\activate        macOS/Linux:  source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --port 8001
+```
 
-**Black frames.** Virtual cameras hand out black frames while the phone app is starting or when the wrong backend is used. A frame is
-black when its mean brightness *and* 99.5th percentile are below `CAMERA_BLACK_MEAN_THRESHOLD` / `CAMERA_BLACK_PEAK_THRESHOLD`.
-Black frames are never published as a capture: on open, the source waits up to `*_OPEN_TIMEOUT` s for the first real frame and
-otherwise tries the next backend (`auto`: Windows `dshow → msmf → any`, Linux `v4l2 → any`); while running, black frames do not refresh
-the stream, so after `*_STALL_TIMEOUT` s the device is reopened. A request that only sees black frames fails with HTTP 503
-("камера … отдаёт только чёрные/пустые кадры") instead of returning an empty image, and the fixture fallback is *not* used for it.
-Device opening is serialized across cameras (DirectShow/MSMF are not safe to open concurrently), and `auto` index scan never hands the same device to two sources.
+The first start downloads the EasyOCR model (~100 MB, once). Startup takes ~10 s on a modest machine: the cameras open and the model
+is loaded and warmed up **before** the service starts answering, so the first request of the demo is already fast.
+Open `http://localhost:8001/docs` to try it.
 
-Each source runs a reader thread that keeps the stream drained (no stale buffered frames), reconnects with exponential backoff,
-treats `*_STALL_TIMEOUT` seconds without frames as a dead stream, drops the cached frame on disconnect, and releases the device
-from the same thread that reads it. A request gets a frame captured *after* it arrived. Shutdown stops all threads.
-`CAMERA_FIXTURE_FALLBACK=true` (original behaviour) substitutes `fixtures/*.jpg` when a camera is down — disable it in production.
+### Configuration - 4 optional environment variables
 
-## Recognition pipeline
-frame → plate candidates (gradient / bright / dark regions, polarity-independent) → normalisation (polarity, lighting,
-scale) → **segmentation into exactly 10 slots** (dynamic programming over column ink; splits touching glyphs such as the
-merged `AAA` in the sample; rejects lines with fewer or more than 10 characters) → per-slot reading by the existing EasyOCR
-model with the alphabet restricted to the slot class (digit/letter) → format and country check. If no candidate segments,
-the previous whole-line reading is used as fallback. `corrections_applied` counts characters the format constraint changed.
-Slot confidence is the model's own confidence when it agrees with the constraint, and is discounted when the constraint overrode it.
-
-## OCR quality assessment (does the model need fine-tuning?)
-Synthetic benchmark, 180 images, fonts not used during development, same images for both pipelines:
-
-| | old | new |
+| variable | default | meaning |
 |---|---|---|
-| exact plate | 69% | 81% |
-| exact after trust gate | 69% | 78% |
-| wrong plate accepted | 11% | 8% |
+| `BACKEND_BASE_URL` | `http://localhost:8000` | where plates are forwarded (`/api/sim/entry`, `/api/sim/exit`) |
+| `BACKEND_SERVICE_TOKEN` | *(empty)* | sent as `X-Service-Token` when set |
+| `ENTRY_CAMERA_SOURCE` | `2` | device index **or** stream URL (`rtsp://...`, `http://...`) |
+| `EXIT_CAMERA_SOURCE` | `3` | same, for the exit camera |
 
-Better on full frames (63→93%, 47→73%) and clean crops (83→97%); **worse on heavily degraded crops (60→47%)**.
-A small classifier trained from scratch on synthetic glyphs of other font families scored 66% exact vs 80% for EasyOCR on
-unseen fonts (it confused `0→9` on a dotted zero it had never seen). Conclusion: do not retrain on synthetic data.
-Fine-tune only if real frames from your phones, scored with `scripts/evaluate_ocr.py dataset ...`, show errors concentrated in
-specific characters (the one weakness found is `G→C`). `OCR_MIN_SLOT_CONFIDENCE` trades coverage for fewer wrong accepts.
-Caveat: all numbers are synthetic; nothing here was measured on real plates.
+Set them in the shell (PowerShell: `$env:ENTRY_CAMERA_SOURCE="0"`; bash: `export ENTRY_CAMERA_SOURCE=0`), or keep a
+`.env` file (see `.env.example`) and start with `uvicorn app.main:app --env-file .env`. There is no custom `.env` parser any more.
+Everything else (burst length, thresholds, timeouts) is a named constant at the top of the module that uses it.
+
+Not sure which index is which phone? `python scripts/find_cameras.py` saves a snapshot per device (stop the service first).
+
+## Endpoints (unchanged)
+
+| | |
+|---|---|
+| `POST /recognize` | image in, plate out, nothing forwarded |
+| `POST /gate-event/signal?gate=entry\|exit` | sensor pulse: the service grabs fresh frames itself, reads the plate, forwards it **once** |
+| `POST /gate-event/with-photo?gate=entry\|exit` | same, with an uploaded frame |
+| `GET /debug/camera-snapshot?gate=entry\|exit` | what the camera sees right now |
+| `GET /health` | liveness |
+
+## What was wrong, and what changed
+
+I measured the original on synthetic 1280x720 scenes (Inter-style plate growing from 150 px to 460 px wide, tilt,
+perspective, noise) and on the real `tests/fixtures/num.png`.
+
+**Why it needed many attempts**
+
+1. **Slow, spiky OCR.** Up to 3 EasyOCR passes *per glyph* plus a DP segmenter, and when that failed a fall-through to
+   EasyOCR's text *detector* on the whole frame: 0.5 s median, **4-10 s worst case**. The burst has a 4 s budget, so one
+   slow frame consumed most of it and the car had already moved on.
+2. **Stale/slow frame capture.** Every frame was JPEG-encoded at q95 and decoded again (lossy and slow), with a long
+   "flush" heuristic to guess whether a frame was fresh.
+3. **Startup stall.** A camera probe scanned device indexes 0-10 under three backends at ~1.5 s each.
+4. **Accepting the first read.** Nothing protected against a plausible-looking misread.
+
+**What it does now**
+
+```
+frame -> 4 cheap OpenCV candidate generators -> perspective-straighten -> glyph check -> tight dark-on-light strip
+      -> EasyOCR recognizer only (no detector network), digit/letter-restricted per plate group
+      -> strict regex  \d{2}KG\d{3}[A-Z]{3}  -> burst confirms across frames -> forward once
+```
+
+* **Localisation** (`app/plate_locator.py`): rows of glyph-shaped blobs (adaptive threshold, either polarity, baseline
+  chaining so tilt is followed), text-band morphology, bright plate bodies and edge quadrilaterals, filtered by aspect
+  ratio and size. Every candidate is perspective-warped, then must *contain* a row of ~10 glyphs to be believed.
+* **Clean strip for EasyOCR**: CLAHE, background flattening, polarity normalised to dark-on-light, deskew, touching glyphs
+  (`AAA`) split at ink valleys, cropped tight and scaled so characters fill 62 % of EasyOCR's 64 px input height (swept 0.45-0.82;
+  0.62 was best for Inter-style fonts).
+* **Reading**: `allowlist='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'` everywhere. The plate is read as four short
+  groups (`DD` `KG` `DDD` `LLL`) with a **digit-only** alphabet for the digit groups and a **letter-only** one for the letter
+  groups (2 batched calls), which resolves O/0, I/1, Z/2, G/6 by position. A group the model is unsure of must be confirmed
+  by an independent free line read, otherwise it is rejected. Text of the wrong length is never "repaired".
+* **Regex gate** (`app/plate_format.py`): the final string must match `\d{2}KG\d{3}[A-Z]{3}`; region must be 01-11. The API
+  still returns `plate_number` without `KG` (`01111AAA`) and `formatted` as `01 KG 111 AAA`, exactly as before.
+* **Burst** (`app/api.py`): a clean, confident read is accepted from one frame; otherwise two frames must agree. The slow
+  full-frame fallback never runs inside the loop, only once at the very end if nothing was read.
+* **Cameras** (`app/camera.py`): one reader thread per camera keeps draining the driver, so a fresh frame is ~50 ms away,
+  frames read while a backlog drains are never called "fresh", and dead cameras reconnect on their own. No JPEG round trip.
+
+### Measured (same frames, same machine: 1 CPU core, no GPU)
+
+| benchmark | | original | new |
+|---|---|---|---|
+| approaching car, 48 frames | exact reads | 46 | 45 |
+| | wrong reads | 0 | 1 |
+| | mean / median / worst | 919 / 515 / **10 381 ms** | 151 / 134 / **281 ms** |
+| stress matrix, 60 frames (other fonts, light-on-dark, touching glyphs, heavy noise, tilt+perspective) | exact reads | 53 | 57 |
+| | wrong reads | **4** | **0** |
+| | mean / worst | 840 / 4 190 ms | 137 / 275 ms |
+| real fixture `num.png` | | - | `01 KG 111 AAA`, conf 1.00, 78 ms |
+
+Be realistic about what this shows: it is *synthetic* data plus one real crop. The misses that remain are the two
+farthest plates (150-156 px wide, ~11 px glyphs - the burst re-reads as the car comes closer) and one Q/O look-alike.
+Expect a faster laptop to be 2-4x quicker than these numbers. **Rehearse with your real camera and plates before the demo**:
+`python scripts/evaluate.py photos/` prints plate, confidence and time for a folder of your own shots.
+
+End-to-end check performed: real `uvicorn` process, live MJPEG stream of a "car" approaching, stub backend: 8/8 cars read
+correctly, each forwarded exactly once with the token and correlation id.
 
 ## Tests
-`pytest -m "not ocr_model"` (no model needed) · `pytest` (also runs the tests that load EasyOCR; weights download on first run).
-Not covered: real USB hardware (logic is tested with fake devices), real photographed plates.
+
+```bash
+pytest                      # 60 tests, ~20 s (uses EasyOCR; weights download on first run)
+pytest -m "not ocr_model"   # contract/unit tests only, ~5 s
+python scripts/evaluate.py  # synthetic benchmark
+```
+
+`tests/test_api_contract.py` is the safety net for other services: OpenAPI snapshot, payloads, error messages, status
+codes, single-flight per gate, backend headers. Keep it green and callers will not notice any refactor.
+
+## Layout
+
+```
+app/
+  main.py          app + startup (cameras open while the model warms up)
+  api.py           routes + burst logic
+  schemas.py       response models (public contract)
+  gate.py          validate -> forward to backend
+  recognizer.py    EasyOCR wrapper + recognition pipeline
+  plate_locator.py OpenCV: candidates, straightening, character strip
+  plate_format.py  regex + position-aware fixes
+  camera.py        camera reader threads
+  config.py        4 env vars
+  models.py  services.py
+scripts/  find_cameras.py  evaluate.py
+tests/
+```
+
+## Tuning notes
+
+* Plate not read while the car is far: that is physics (glyphs under ~9 px). Raise camera resolution / zoom, or mount the camera
+  nearer; the burst already keeps trying for 4 s (`BURST_DEADLINE`, `BURST_ATTEMPTS` in `app/api.py`).
+* Plate read but the gate refuses it with "too many corrected characters": the model was unsure about several glyphs;
+  check lighting / focus (`/debug/camera-snapshot`).
+* GPU is used automatically if PyTorch sees one.
