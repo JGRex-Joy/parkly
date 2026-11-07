@@ -1,4 +1,3 @@
-"""HTTP API. Routes, parameters, response models and error messages are the public contract of the service."""
 from __future__ import annotations
 
 import asyncio
@@ -18,12 +17,10 @@ from app.services import Services, get_services
 router = APIRouter()
 logger = logging.getLogger("ocr_service.api")
 
-# One sensor signal = a short burst of fresh frames (the first frame is often blurry / still moving). Frames are
-# cheap to read now (~150 ms), so the burst is long enough to follow a car that is still pulling up to the gate.
 BURST_ATTEMPTS = 10
-BURST_INTERVAL = 0.05          # camera hands out a newer frame within ~50 ms anyway
+BURST_INTERVAL = 0.05          
 BURST_DEADLINE = 4.0
-CONFIDENT = 0.85               # a clean read this sure is accepted from a single frame; otherwise two frames must agree
+CONFIDENT = 0.85               
 
 _IN_FLIGHT: Dict[str, "asyncio.Future[GateEventResponse]"] = {}
 
