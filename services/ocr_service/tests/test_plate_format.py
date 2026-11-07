@@ -1,75 +1,51 @@
 import pytest
 
-from app.models import PlateCandidate
-from app.services.plate_format import (
-    SLOT_CLASSES,
-    build_candidate,
-    matches_format,
-    match_country,
-    parse_text,
-)
+from app.plate_format import PLATE_RE, from_groups, matches_format, parse_text
 
 
-def test_slot_layout_is_2_digits_2_letters_3_digits_3_letters():
-    assert "".join(SLOT_CLASSES) == "DDLLDDDLLL"
+@pytest.mark.parametrize("text", ["01KG111AAA", "11KG999ZZZ"])
+def test_regex_accepts_kyrgyz_plates(text):
+    assert PLATE_RE.match(text) and matches_format(text)
 
 
-@pytest.mark.parametrize("plate,ok", [
-    ("01KG111AAA", True), ("11KG999ZZZ", True),
-    ("01KG11AAA", False), ("01KG1111AAA", False), ("O1KG111AAA", False),
-    ("01KG111AA", False), ("01kg111aaa", False), ("0KKG111AAA", False), ("", False),
-])
-def test_matches_format(plate, ok):
-    assert matches_format(plate) is ok
+@pytest.mark.parametrize("text", ["01KC111AAA", "1KG111AAA", "01KG11AAA", "01KG111AA", "01KG1111AAA", "01KG111AA1", "O1KG111AAA", ""])
+def test_regex_rejects_false_reads(text):
+    assert not matches_format(text)
 
 
-def test_candidate_output_matches_legacy_contract():
-    cand = build_candidate(list("01KG111AAA"), 0, "KG")
-    assert cand == PlateCandidate("01", "KG", "111", "AAA", 0)
-    assert cand.plate_number == "01111AAA"       
-    assert cand.formatted == "01 KG 111 AAA"     
-    assert cand.is_valid_region
+def test_parse_clean_and_noisy_text():
+    c = parse_text("01 KG 111 AAA")
+    assert (c.plate_number, c.formatted, c.corrections) == ("01111AAA", "01 KG 111 AAA", 0)
+    assert parse_text("junk 07KG977OIZ more junk").plate_number == "07977OIZ"
 
 
-@pytest.mark.parametrize("region,valid", [("00", False), ("01", True), ("11", True), ("12", False), ("99", False)])
-def test_region_validity_range_unchanged(region, valid):
-    cand = build_candidate(list(f"{region}KG111AAA"), 0, "KG")
-    assert cand.is_valid_region is valid
+def test_position_aware_fixes_are_counted():
+    c = parse_text("O1KG1I1AAA")                   # letter O / I standing in digit slots
+    assert c.plate_number == "01111AAA" and c.corrections == 2
+    c = parse_text("01KG111OC2")                   # a digit standing in a letter slot -> O C Z
+    assert c.letters == "OCZ" and c.corrections == 1
+    assert parse_text("01KG1110C2") is None         # two of three letters guessed: not trustworthy
 
 
-def test_wrong_class_in_slot_is_rejected():
-    assert build_candidate(list("0OKG111AAA"), 0, "KG") is None
-    assert build_candidate(list("01KG1I1AAA"), 0, "KG") is None
-    assert build_candidate(list("01KG111AA1"), 0, "KG") is None
-    assert build_candidate(list("01KG111AA"), 0, "KG") is None
+def test_misaligned_reads_are_never_repaired():
+    assert parse_text("01KG7864LWC") is None        # inserted character: a '4' must not become an 'A'
+    assert parse_text("xx 01KG111AAA yy").plate_number == "01111AAA"   # an exact plate inside noise is fine
 
 
-def test_country_code_tolerates_one_misread_letter_and_counts_it():
-    assert match_country("KG", "KG") == ("KG", 0)
-    assert match_country("KC", "KG") == ("KG", 1)
-    assert match_country("XY", "KG") is None
-    assert match_country("XY", "") == ("XY", 0)   
-    cand = build_candidate(list("01KC111AAA"), 1, "KG")
-    assert cand.country == "KG" and cand.corrections == 2
-    assert build_candidate(list("01XY111AAA"), 0, "KG") is None
+def test_country_code_is_mandatory_and_tolerates_one_misread_letter():
+    assert parse_text("01111AAA") is None                   # no KG: not a plate in this format
+    c = parse_text("01K6111AAA")
+    assert c.country == "KG" and c.corrections == 1
+    assert parse_text("01XX111AAA") is None
 
 
-@pytest.mark.parametrize("raw,formatted,corrections", [
-    ("01KG111AAA", "01 KG 111 AAA", 0),
-    ("01 KG 111 AAA", "01 KG 111 AAA", 0),
-    ("  01-kg-111-aaa ", "01 KG 111 AAA", 0),
-    ("O1KG111AAA", "01 KG 111 AAA", 1),
-    ("01KG1I1AAA", "01 KG 111 AAA", 1),
-    ("01K6111AAA", "01 KG 111 AAA", 1),
-    ("O1KG1I1AAA", "01 KG 111 AAA", 2),
-    ("xx01KG111AAAyy", "01 KG 111 AAA", 0),
-    ("01111AAA", "01 KG 111 AAA", 0),       
-])
-def test_parse_text_recovers_plate(raw, formatted, corrections):
-    cand = parse_text(raw, "KG")
-    assert cand is not None and cand.formatted == formatted and cand.corrections == corrections
+def test_from_groups():
+    assert from_groups(["01", "KG", "111", "AAA"]).formatted == "01 KG 111 AAA"
+    assert from_groups(["01", "KG", "11", "AAA"]) is None
+    assert from_groups(["01", "111", "AAA"]) is None
 
 
-@pytest.mark.parametrize("raw", ["", "KG", "HELLO WORLD", "0123456789", "01KG111", "AAAAAAAAAA"])
-def test_parse_text_rejects_garbage(raw):
-    assert parse_text(raw, "KG") is None
+def test_region_validity():
+    assert parse_text("11KG111AAA").is_valid_region
+    assert not parse_text("12KG111AAA").is_valid_region
+    assert not parse_text("00KG111AAA").is_valid_region

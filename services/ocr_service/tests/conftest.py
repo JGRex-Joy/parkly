@@ -1,12 +1,23 @@
 import os
-import sys
-from pathlib import Path
+import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+FONT_CANDIDATES = [
+    "/usr/share/fonts/opentype/inter/Inter-SemiBold.otf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+    "/Library/Fonts/Arial Bold.ttf",
+]
 
-os.environ.setdefault("OCR_PRELOAD", "0")
-os.environ.setdefault("CAMERA_USB_ENABLED", "0")
-os.environ.setdefault("CAMERA_IP_URL", "")
-os.environ.setdefault("CAMERA_FIXTURE_FALLBACK", "0")
+
+@pytest.fixture(scope="session")
+def plate_font():
+    return next((f for f in FONT_CANDIDATES if os.path.exists(f)), "simplex")
+
+
+@pytest.fixture(scope="session")
+def service():
+    from app.recognizer import OcrEngine, RecognitionService
+    engine = OcrEngine()
+    engine.warm_up()
+    return RecognitionService(engine)

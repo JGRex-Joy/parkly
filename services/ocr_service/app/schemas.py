@@ -18,3 +18,16 @@ class RecognizeResponse(BaseModel):
     plate_detection_method: str
     plate_detection_score: float
     raw_detections: List[DetectionOut]
+
+
+class GateEventResponse(BaseModel):
+    recognized: RecognizeResponse
+    forwarded_to_backend: bool
+    backend_response: Optional[dict] = None
+    reject_reason: Optional[str] = None
+    frame_source: str
+
+
+class CameraSnapshotResponse(BaseModel):
+    source: str
+    image_base64: str
